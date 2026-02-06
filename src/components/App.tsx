@@ -5,27 +5,102 @@ import { useStore } from "../store.js";
 import { RequestList } from "./RequestList.js";
 import { RequestDetail } from "./RequestDetail.js";
 
+// Stable selectors for Header
+const selectConnected = (s: ReturnType<typeof useStore.getState>) => s.connected;
+const selectClientName = (s: ReturnType<typeof useStore.getState>) => s.clientName;
+const selectRequestCount = (s: ReturnType<typeof useStore.getState>) => s.requests.length;
+const selectFilteredCount = (s: ReturnType<typeof useStore.getState>) => s.filteredRequests.length;
+const selectHasFilter = (s: ReturnType<typeof useStore.getState>) => s.filterText.length > 0;
+const selectPaused = (s: ReturnType<typeof useStore.getState>) => s.paused;
+
+// Stable selectors for FilterBar
+const selectFilterText = (s: ReturnType<typeof useStore.getState>) => s.filterText;
+const selectSetFilterText = (s: ReturnType<typeof useStore.getState>) => s.setFilterText;
+const selectFilterFocused = (s: ReturnType<typeof useStore.getState>) => s.filterFocused;
+
+// Stable selectors for App
+const selectSetFilterFocused = (s: ReturnType<typeof useStore.getState>) => s.setFilterFocused;
+const selectClearRequests = (s: ReturnType<typeof useStore.getState>) => s.clearRequests;
+const selectTogglePaused = (s: ReturnType<typeof useStore.getState>) => s.togglePaused;
+
+const Header = React.memo(function Header() {
+  const connected = useStore(selectConnected);
+  const clientName = useStore(selectClientName);
+  const requestCount = useStore(selectRequestCount);
+  const filteredCount = useStore(selectFilteredCount);
+  const hasFilter = useStore(selectHasFilter);
+  const paused = useStore(selectPaused);
+
+  return (
+    <Box paddingX={1}>
+      <Text bold>netwatch</Text>
+      <Text> │ </Text>
+      {connected ? (
+        <Text color="green">● {clientName || "Connected"}</Text>
+      ) : (
+        <Text color="yellow">○ Waiting on :9090</Text>
+      )}
+      <Text> │ </Text>
+      <Text dimColor>
+        {requestCount} reqs
+        {hasFilter && ` (${filteredCount} match)`}
+      </Text>
+      {paused && (
+        <>
+          <Text> │ </Text>
+          <Text color="red">PAUSED</Text>
+        </>
+      )}
+    </Box>
+  );
+});
+
+const FilterBar = React.memo(function FilterBar() {
+  const filterText = useStore(selectFilterText);
+  const setFilterText = useStore(selectSetFilterText);
+  const filterFocused = useStore(selectFilterFocused);
+
+  return (
+    <Box paddingX={1}>
+      <Text dimColor>/</Text>
+      <Text> </Text>
+      {filterFocused ? (
+        <TextInput
+          value={filterText}
+          onChange={setFilterText}
+          placeholder="Filter..."
+        />
+      ) : (
+        <Text dimColor>{filterText || "/ to filter"}</Text>
+      )}
+    </Box>
+  );
+});
+
+const Footer = React.memo(function Footer() {
+  return (
+    <Box paddingX={1}>
+      <Text dimColor>↑↓/jk nav │ ud scroll │ r toggle │ c clear │ p pause │ q quit</Text>
+    </Box>
+  );
+});
+
 export function App() {
-  const connected = useStore((s) => s.connected);
-  const clientName = useStore((s) => s.clientName);
-  const requestCount = useStore((s) => s.requests.length);
-  const filteredCount = useStore((s) => s.filteredRequests.length);
-  const filterText = useStore((s) => s.filterText);
-  const setFilterText = useStore((s) => s.setFilterText);
-  const filterFocused = useStore((s) => s.filterFocused);
-  const setFilterFocused = useStore((s) => s.setFilterFocused);
-  const clearRequests = useStore((s) => s.clearRequests);
-  const paused = useStore((s) => s.paused);
-  const togglePaused = useStore((s) => s.togglePaused);
+  const filterFocused = useStore(selectFilterFocused);
+  const setFilterFocused = useStore(selectSetFilterFocused);
+  const clearRequests = useStore(selectClearRequests);
+  const togglePaused = useStore(selectTogglePaused);
   const { exit } = useApp();
-  // Read terminal height once on mount to avoid re-renders
-  const [terminalHeight] = React.useState(() => process.stdout.rows ?? 24);
+
+  // Calculate heights once on mount
+  const [mainHeight] = React.useState(() => {
+    const rows = process.stdout.rows ?? 24;
+    return Math.max(5, rows - 4);
+  });
 
   useInput((input, key) => {
-    if (key.escape) {
-      if (filterFocused) {
-        setFilterFocused(false);
-      }
+    if (key.escape && filterFocused) {
+      setFilterFocused(false);
     } else if (input === "/" && !filterFocused) {
       setFilterFocused(true);
     } else if (input === "c" && !filterFocused) {
@@ -38,65 +113,18 @@ export function App() {
   });
 
   return (
-    <Box flexDirection="column" height={terminalHeight}>
-      {/* Header */}
-      <Box borderStyle="single" borderBottom borderTop={false} borderLeft={false} borderRight={false} paddingX={1}>
-        <Text bold>netwatch</Text>
-        <Text> │ </Text>
-        {connected ? (
-          <Text color="green">● {clientName || "Connected"}</Text>
-        ) : (
-          <Text color="yellow">○ Waiting for connection on :9090</Text>
-        )}
-        <Text> │ </Text>
-        <Text dimColor>
-          {requestCount} requests
-          {filterText && ` (${filteredCount} filtered)`}
-        </Text>
-        {paused && (
-          <>
-            <Text> │ </Text>
-            <Text color="red">⏸ PAUSED</Text>
-          </>
-        )}
-      </Box>
-
-      {/* Filter */}
-      <Box paddingX={1} paddingY={0}>
-        <Text dimColor>/</Text>
-        <Text> </Text>
-        {filterFocused ? (
-          <TextInput
-            value={filterText}
-            onChange={setFilterText}
-            placeholder="Filter by URL, method, status..."
-          />
-        ) : (
-          <Text dimColor>
-            {filterText || "Press / to filter"}
-          </Text>
-        )}
-      </Box>
-
-      {/* Main content */}
-      <Box flexGrow={1}>
-        {/* Request list - left side */}
-        <Box width="50%" flexDirection="column" borderStyle="single" borderRight borderTop={false} borderBottom={false} borderLeft={false}>
-          <RequestList />
-        </Box>
-
-        {/* Request detail - right side */}
+    <Box flexDirection="column">
+      <Header />
+      <FilterBar />
+      <Box height={mainHeight}>
         <Box width="50%" flexDirection="column">
-          <RequestDetail />
+          <RequestList maxItems={mainHeight} />
+        </Box>
+        <Box width="50%" flexDirection="column">
+          <RequestDetail visibleLines={mainHeight - 5} />
         </Box>
       </Box>
-
-      {/* Footer */}
-      <Box paddingX={1} borderStyle="single" borderTop borderBottom={false} borderLeft={false} borderRight={false}>
-        <Text dimColor>
-          ↑/↓ navigate │ r toggle req/res │ c clear │ p pause │ / filter │ q quit
-        </Text>
-      </Box>
+      <Footer />
     </Box>
   );
 }

@@ -22,6 +22,27 @@ interface NetwatchState {
 }
 
 const MAX_REQUESTS = 500;
+const BATCH_INTERVAL = 100; // ms
+
+// Batch pending requests to reduce re-renders
+let pendingRequests: StoredRequest[] = [];
+let batchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function flushRequests(set: (fn: (state: NetwatchState) => Partial<NetwatchState>) => void) {
+  if (pendingRequests.length === 0) return;
+
+  const toAdd = pendingRequests;
+  pendingRequests = [];
+  batchTimeout = null;
+
+  set((state) => {
+    const requests = [...toAdd, ...state.requests].slice(0, MAX_REQUESTS);
+    return {
+      requests,
+      filteredRequests: filterRequests(requests, state.filterText),
+    };
+  });
+}
 
 export const useStore = create<NetwatchState>((set, get) => ({
   connected: false,
@@ -38,16 +59,22 @@ export const useStore = create<NetwatchState>((set, get) => ({
 
   addRequest: (request) => {
     if (get().paused) return;
-    set((state) => {
-      const requests = [request, ...state.requests].slice(0, MAX_REQUESTS);
-      return {
-        requests,
-        filteredRequests: filterRequests(requests, state.filterText),
-      };
-    });
+
+    pendingRequests.unshift(request);
+
+    if (!batchTimeout) {
+      batchTimeout = setTimeout(() => flushRequests(set), BATCH_INTERVAL);
+    }
   },
 
-  clearRequests: () => set({ requests: [], filteredRequests: [], selectedIndex: 0 }),
+  clearRequests: () => {
+    pendingRequests = [];
+    if (batchTimeout) {
+      clearTimeout(batchTimeout);
+      batchTimeout = null;
+    }
+    set({ requests: [], filteredRequests: [], selectedIndex: 0 });
+  },
 
   setSelectedIndex: (index) => set({ selectedIndex: index }),
 

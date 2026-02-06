@@ -1,8 +1,8 @@
 import React from "react";
 import { Box, Text, useInput } from "ink";
 import chalk from "chalk";
-import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store.js";
+import { useShallow } from "zustand/react/shallow";
 
 function formatJson(data: unknown): string {
   if (data === null || data === undefined) return "";
@@ -22,108 +22,65 @@ function getStatusColor(status: number): (s: string) => string {
   return chalk.red;
 }
 
-function HeadersSection({
-  title,
-  headers,
-}: {
-  title: string;
-  headers: Record<string, string>;
-}) {
-  const entries = Object.entries(headers);
-  if (entries.length === 0) return null;
+// Stable selectors
+const selectFilteredRequests = (s: ReturnType<typeof useStore.getState>) => s.filteredRequests;
+const selectSelectedIndex = (s: ReturnType<typeof useStore.getState>) => s.selectedIndex;
 
-  return (
-    <Box flexDirection="column" marginTop={1}>
-      <Text bold dimColor>
-        {title}
-      </Text>
-      {entries.slice(0, 10).map(([key, value]) => (
-        <Text key={key} dimColor>
-          {key}: {value}
-        </Text>
-      ))}
-      {entries.length > 10 && (
-        <Text dimColor>... +{entries.length - 10} more</Text>
-      )}
-    </Box>
-  );
+interface RequestDetailProps {
+  visibleLines?: number;
 }
 
-function BodySection({ title, body }: { title: string; body: unknown }) {
-  const formatted = formatJson(body);
-  if (!formatted) return null;
-
-  const lines = formatted.split("\n");
-  const truncated = lines.length > 30;
-  const displayLines = truncated ? lines.slice(0, 30) : lines;
-
-  return (
-    <Box flexDirection="column" marginTop={1}>
-      <Text bold dimColor>
-        {title}
-      </Text>
-      <Text>{displayLines.join("\n")}</Text>
-      {truncated && <Text dimColor>... +{lines.length - 30} more lines</Text>}
-    </Box>
-  );
-}
-
-export const RequestDetail = React.memo(function RequestDetail() {
-  const filteredRequests = useStore(useShallow((s) => s.filteredRequests));
-  const selectedIndex = useStore((s) => s.selectedIndex);
+export const RequestDetail = React.memo(function RequestDetail({
+  visibleLines = 20,
+}: RequestDetailProps) {
+  const filteredRequests = useStore(useShallow(selectFilteredRequests));
+  const selectedIndex = useStore(selectSelectedIndex);
   const [showResponse, setShowResponse] = React.useState(true);
+  const [scrollOffset, setScrollOffset] = React.useState(0);
 
   const request = filteredRequests[selectedIndex];
+
+  // Reset scroll when request or view changes
+  React.useEffect(() => {
+    setScrollOffset(0);
+  }, [selectedIndex, showResponse]);
 
   useInput((input) => {
     if (input === "r") {
       setShowResponse((s) => !s);
+    } else if (input === "d") {
+      setScrollOffset((s) => s + 5);
+    } else if (input === "u") {
+      setScrollOffset((s) => Math.max(0, s - 5));
     }
   });
 
   if (!request) {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Text dimColor>Select a request to view details</Text>
+      <Box paddingX={1}>
+        <Text dimColor>Select a request</Text>
       </Box>
     );
   }
 
   const statusColor = getStatusColor(request.status);
+  const data = showResponse ? request.response : request.request;
+  const body = formatJson(data.body);
+  const lines = body ? body.split("\n") : [];
+  const displayLines = lines.slice(scrollOffset, scrollOffset + visibleLines);
 
   return (
-    <Box flexDirection="column" paddingLeft={1}>
-      <Box marginBottom={1}>
-        <Text bold>
-          {request.method}{" "}
-          {statusColor(String(request.status))}{" "}
-          <Text dimColor>{request.duration}ms</Text>
-        </Text>
-      </Box>
-      <Text wrap="truncate">{request.url}</Text>
-
-      <Box marginTop={1}>
-        <Text dimColor>
-          [r] toggle view • showing: {showResponse ? "response" : "request"}
-        </Text>
-      </Box>
-
-      {showResponse ? (
-        <>
-          <HeadersSection
-            title="Response Headers"
-            headers={request.response.headers}
-          />
-          <BodySection title="Response Body" body={request.response.body} />
-        </>
-      ) : (
-        <>
-          <HeadersSection
-            title="Request Headers"
-            headers={request.request.headers}
-          />
-          <BodySection title="Request Body" body={request.request.body} />
-        </>
+    <Box flexDirection="column" paddingX={1}>
+      <Text>
+        <Text bold>{request.method}</Text> {statusColor(String(request.status))} <Text dimColor>{request.duration}ms</Text>
+      </Text>
+      <Text wrap="truncate" dimColor>{request.url}</Text>
+      <Text dimColor>[r] {showResponse ? "res" : "req"}</Text>
+      {displayLines.length > 0 && (
+        <Text>{displayLines.join("\n")}</Text>
+      )}
+      {lines.length > visibleLines && (
+        <Text dimColor>↕ {scrollOffset + 1}-{Math.min(scrollOffset + visibleLines, lines.length)}/{lines.length}</Text>
       )}
     </Box>
   );

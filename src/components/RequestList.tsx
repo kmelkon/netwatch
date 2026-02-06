@@ -1,8 +1,8 @@
 import React from "react";
 import { Box, Text, useInput } from "ink";
 import chalk from "chalk";
-import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store.js";
+import { useShallow } from "zustand/react/shallow";
 import type { StoredRequest } from "../types.js";
 
 function formatTime(date: Date): string {
@@ -15,7 +15,7 @@ function getStatusColor(status: number): (s: string) => string {
   return chalk.red;
 }
 
-function truncateUrl(url: string, maxLen = 50): string {
+function truncateUrl(url: string, maxLen = 40): string {
   try {
     const parsed = new URL(url);
     const path = parsed.pathname + parsed.search;
@@ -25,12 +25,28 @@ function truncateUrl(url: string, maxLen = 50): string {
   }
 }
 
-export const RequestList = React.memo(function RequestList() {
-  const requestCount = useStore((s) => s.requests.length);
-  const filteredRequests = useStore(useShallow((s) => s.filteredRequests));
-  const selectedIndex = useStore((s) => s.selectedIndex);
-  const setSelectedIndex = useStore((s) => s.setSelectedIndex);
-  const filterFocused = useStore((s) => s.filterFocused);
+// Stable selectors - defined outside component
+const selectRequestCount = (s: ReturnType<typeof useStore.getState>) => s.requests.length;
+const selectFilteredRequests = (s: ReturnType<typeof useStore.getState>) => s.filteredRequests;
+const selectSelectedIndex = (s: ReturnType<typeof useStore.getState>) => s.selectedIndex;
+const selectSetSelectedIndex = (s: ReturnType<typeof useStore.getState>) => s.setSelectedIndex;
+const selectFilterFocused = (s: ReturnType<typeof useStore.getState>) => s.filterFocused;
+
+interface RequestListProps {
+  maxItems?: number;
+}
+
+export const RequestList = React.memo(function RequestList({ maxItems = 20 }: RequestListProps) {
+  const requestCount = useStore(selectRequestCount);
+  const filteredRequests = useStore(useShallow(selectFilteredRequests));
+  const selectedIndex = useStore(selectSelectedIndex);
+  const setSelectedIndex = useStore(selectSetSelectedIndex);
+  const filterFocused = useStore(selectFilterFocused);
+
+  const visibleRequests = React.useMemo(
+    () => filteredRequests.slice(0, maxItems),
+    [filteredRequests, maxItems]
+  );
 
   useInput(
     (input, key) => {
@@ -50,11 +66,9 @@ export const RequestList = React.memo(function RequestList() {
 
   if (filteredRequests.length === 0) {
     return (
-      <Box flexDirection="column" padding={1}>
+      <Box flexDirection="column" paddingX={1}>
         <Text dimColor>
-          {requestCount === 0
-            ? "No requests yet..."
-            : "No requests match filter"}
+          {requestCount === 0 ? "No requests yet..." : "No matches"}
         </Text>
       </Box>
     );
@@ -62,7 +76,7 @@ export const RequestList = React.memo(function RequestList() {
 
   return (
     <Box flexDirection="column">
-      {filteredRequests.slice(0, 20).map((req, idx) => (
+      {visibleRequests.map((req, idx) => (
         <RequestRow
           key={req.id}
           request={req}
@@ -81,16 +95,12 @@ const RequestRow = React.memo(function RequestRow({
   selected: boolean;
 }) {
   const statusColor = getStatusColor(request.status);
-  const methodPad = request.method.padEnd(6);
+  const method = request.method.slice(0, 3);
 
   return (
     <Box>
       <Text inverse={selected}>
-        {selected ? "▶" : " "} {formatTime(request.timestamp)}{" "}
-        <Text bold>{methodPad}</Text>{" "}
-        {statusColor(String(request.status))}{" "}
-        {truncateUrl(request.url)}{" "}
-        <Text dimColor>{request.duration}ms</Text>
+        {selected ? ">" : " "}{formatTime(request.timestamp)} {method} {statusColor(String(request.status))} {truncateUrl(request.url)}
       </Text>
     </Box>
   );
