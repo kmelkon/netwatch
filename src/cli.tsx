@@ -22,10 +22,10 @@ process.stdout.write = function (
 } as typeof process.stdout.write;
 
 // Mouse mode enable/disable sequences
-// \x1b[?1000h = enable normal mouse tracking (press + release + scroll)
+// \x1b[?1003h = any-event tracking (press + release + scroll + motion/hover)
 // \x1b[?1006h = use SGR encoding for coordinates (modern, supports large terminals)
-const MOUSE_ENABLE = "\x1b[?1000h\x1b[?1006h";
-const MOUSE_DISABLE = "\x1b[?1006l\x1b[?1000l";
+const MOUSE_ENABLE = "\x1b[?1003h\x1b[?1006h";
+const MOUSE_DISABLE = "\x1b[?1006l\x1b[?1003l";
 
 const cleanup = () => {
   originalWrite(MOUSE_DISABLE);

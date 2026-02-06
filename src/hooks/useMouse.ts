@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useStdin } from "ink";
 
 export interface PaneMouseEvent {
-  type: "click" | "scroll";
+  type: "click" | "scroll" | "hover";
   pane: "list" | "detail";
   direction?: "up" | "down";
 }
@@ -36,6 +36,10 @@ export function useMouse(callback: (event: PaneMouseEvent) => void): void {
         // Left click press (button 0, M = press)
         if (button === 0 && suffix === "M") {
           callbackRef.current({ type: "click", pane });
+        }
+        // Mouse motion / hover (button 35 = no button pressed, moving)
+        else if (button === 35) {
+          callbackRef.current({ type: "hover", pane });
         }
         // Scroll up (button 64)
         else if (button === 64) {

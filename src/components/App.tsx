@@ -78,10 +78,26 @@ const FilterBar = React.memo(function FilterBar() {
   );
 });
 
+function KeyBadge({ keys, label }: { keys: string; label: string }) {
+  return (
+    <Text>
+      <Text bold color="cyan">{keys}</Text>
+      <Text dimColor> {label}  </Text>
+    </Text>
+  );
+}
+
 const Footer = React.memo(function Footer() {
   return (
-    <Box paddingX={1}>
-      <Text dimColor>↑↓/jk nav │ ud/scroll detail │ r req/res │ h headers │ c clear │ p pause │ q quit</Text>
+    <Box paddingX={1} gap={0}>
+      <KeyBadge keys="↑↓" label="nav" />
+      <KeyBadge keys="u/d" label="scroll" />
+      <KeyBadge keys="r" label="req/res" />
+      <KeyBadge keys="h" label="headers" />
+      <KeyBadge keys="/" label="filter" />
+      <KeyBadge keys="c" label="clear" />
+      <KeyBadge keys="p" label="pause" />
+      <KeyBadge keys="q" label="quit" />
     </Box>
   );
 });
@@ -94,6 +110,7 @@ export function App() {
   const { exit } = useApp();
   const detailRef = React.useRef<DetailScrollHandle>(null);
   const [focusedPane, setFocusedPane] = React.useState<"list" | "detail">("list");
+  const [hoveredPane, setHoveredPane] = React.useState<"list" | "detail" | null>(null);
 
   // Calculate heights once on mount
   // Header(1) + Filter(1) + Footer(1) + borders(2 top/bottom per pane) = 5 overhead
@@ -122,6 +139,8 @@ export function App() {
   useMouse((event) => {
     if (event.type === "click") {
       setFocusedPane(event.pane);
+    } else if (event.type === "hover") {
+      setHoveredPane(event.pane);
     } else if (event.type === "scroll" && event.pane === focusedPane) {
       const delta = event.direction === "down" ? 3 : -3;
       if (focusedPane === "detail") {
@@ -143,7 +162,7 @@ export function App() {
           width="50%"
           flexDirection="column"
           borderStyle="single"
-          borderColor={focusedPane === "list" ? "cyan" : "gray"}
+          borderColor={focusedPane === "list" ? "cyan" : hoveredPane === "list" ? "yellow" : "gray"}
         >
           <RequestList maxItems={innerHeight} />
         </Box>
@@ -151,7 +170,7 @@ export function App() {
           width="50%"
           flexDirection="column"
           borderStyle="single"
-          borderColor={focusedPane === "detail" ? "cyan" : "gray"}
+          borderColor={focusedPane === "detail" ? "cyan" : hoveredPane === "detail" ? "yellow" : "gray"}
         >
           <RequestDetail ref={detailRef} visibleLines={innerHeight - 4} />
         </Box>
