@@ -21,11 +21,11 @@ process.stdout.write = function (
   return originalWrite(chunk, ...(args as []));
 } as typeof process.stdout.write;
 
-// Enable SGR extended mouse mode for scroll wheel support
-// Unsupported terminals safely ignore these sequences
-const MOUSE_ENABLE = "\x1b[?1006h";
-const MOUSE_DISABLE = "\x1b[?1006l";
-originalWrite(MOUSE_ENABLE);
+// Mouse mode enable/disable sequences
+// \x1b[?1000h = enable normal mouse tracking (press + release + scroll)
+// \x1b[?1006h = use SGR encoding for coordinates (modern, supports large terminals)
+const MOUSE_ENABLE = "\x1b[?1000h\x1b[?1006h";
+const MOUSE_DISABLE = "\x1b[?1006l\x1b[?1000l";
 
 const cleanup = () => {
   originalWrite(MOUSE_DISABLE);
@@ -42,6 +42,9 @@ const { waitUntilExit } = render(<App />, {
   incrementalRendering: true,
   maxFps: 20,
 });
+
+// Enable mouse AFTER Ink starts (needs raw mode active on stdin)
+originalWrite(MOUSE_ENABLE);
 
 waitUntilExit().then(() => {
   cleanup();

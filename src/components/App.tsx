@@ -4,7 +4,7 @@ import TextInput from "ink-text-input";
 import { useStore } from "../store.js";
 import { RequestList } from "./RequestList.js";
 import { RequestDetail, type DetailScrollHandle } from "./RequestDetail.js";
-import { useMouseScroll } from "../hooks/useMouseScroll.js";
+import { useMouse } from "../hooks/useMouse.js";
 
 // Stable selectors for Header
 const selectConnected = (s: ReturnType<typeof useStore.getState>) => s.connected;
@@ -93,6 +93,7 @@ export function App() {
   const togglePaused = useStore(selectTogglePaused);
   const { exit } = useApp();
   const detailRef = React.useRef<DetailScrollHandle>(null);
+  const [focusedPane, setFocusedPane] = React.useState<"list" | "detail">("list");
 
   // Calculate heights once on mount
   // Header(1) + Filter(1) + Footer(1) + borders(2 top/bottom per pane) = 5 overhead
@@ -118,9 +119,19 @@ export function App() {
     }
   });
 
-  useMouseScroll((direction) => {
-    const delta = direction === "down" ? 3 : -3;
-    detailRef.current?.scroll(delta);
+  useMouse((event) => {
+    if (event.type === "click") {
+      setFocusedPane(event.pane);
+    } else if (event.type === "scroll" && event.pane === focusedPane) {
+      const delta = event.direction === "down" ? 3 : -3;
+      if (focusedPane === "detail") {
+        detailRef.current?.scroll(delta);
+      } else {
+        const { selectedIndex, setSelectedIndex, filteredRequests } = useStore.getState();
+        const next = Math.max(0, Math.min(filteredRequests.length - 1, selectedIndex + delta));
+        setSelectedIndex(next);
+      }
+    }
   });
 
   return (
@@ -128,10 +139,20 @@ export function App() {
       <Header />
       <FilterBar />
       <Box height={mainHeight}>
-        <Box width="50%" flexDirection="column" borderStyle="single" borderColor="gray">
+        <Box
+          width="50%"
+          flexDirection="column"
+          borderStyle="single"
+          borderColor={focusedPane === "list" ? "cyan" : "gray"}
+        >
           <RequestList maxItems={innerHeight} />
         </Box>
-        <Box width="50%" flexDirection="column" borderStyle="single" borderColor="gray">
+        <Box
+          width="50%"
+          flexDirection="column"
+          borderStyle="single"
+          borderColor={focusedPane === "detail" ? "cyan" : "gray"}
+        >
           <RequestDetail ref={detailRef} visibleLines={innerHeight - 4} />
         </Box>
       </Box>
