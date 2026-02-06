@@ -43,9 +43,27 @@ export const RequestList = React.memo(function RequestList({ maxItems = 20 }: Re
   const setSelectedIndex = useStore(selectSetSelectedIndex);
   const filterFocused = useStore(selectFilterFocused);
 
+  // Follow-cursor scrolling: scrollTop tracks first visible item
+  const scrollTopRef = React.useRef(0);
+  const prevFilteredRef = React.useRef(filteredRequests);
+
+  // Reset scrollTop when filtered results change (filter text, clear)
+  if (filteredRequests !== prevFilteredRef.current) {
+    scrollTopRef.current = 0;
+    prevFilteredRef.current = filteredRequests;
+  }
+
+  // Adjust viewport to follow selection
+  if (selectedIndex < scrollTopRef.current) {
+    scrollTopRef.current = selectedIndex;
+  } else if (selectedIndex >= scrollTopRef.current + maxItems) {
+    scrollTopRef.current = selectedIndex - maxItems + 1;
+  }
+  const scrollTop = scrollTopRef.current;
+
   const visibleRequests = React.useMemo(
-    () => filteredRequests.slice(0, maxItems),
-    [filteredRequests, maxItems]
+    () => filteredRequests.slice(scrollTop, scrollTop + maxItems),
+    [filteredRequests, scrollTop, maxItems]
   );
 
   useInput(
@@ -80,9 +98,14 @@ export const RequestList = React.memo(function RequestList({ maxItems = 20 }: Re
         <RequestRow
           key={req.id}
           request={req}
-          selected={idx === selectedIndex}
+          selected={scrollTop + idx === selectedIndex}
         />
       ))}
+      {filteredRequests.length > maxItems && (
+        <Text dimColor>
+          {" "}↕ {scrollTop + 1}-{Math.min(scrollTop + maxItems, filteredRequests.length)}/{filteredRequests.length}
+        </Text>
+      )}
     </Box>
   );
 });

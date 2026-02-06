@@ -3,7 +3,8 @@ import { Box, Text, useInput, useApp } from "ink";
 import TextInput from "ink-text-input";
 import { useStore } from "../store.js";
 import { RequestList } from "./RequestList.js";
-import { RequestDetail } from "./RequestDetail.js";
+import { RequestDetail, type DetailScrollHandle } from "./RequestDetail.js";
+import { useMouseScroll } from "../hooks/useMouseScroll.js";
 
 // Stable selectors for Header
 const selectConnected = (s: ReturnType<typeof useStore.getState>) => s.connected;
@@ -80,7 +81,7 @@ const FilterBar = React.memo(function FilterBar() {
 const Footer = React.memo(function Footer() {
   return (
     <Box paddingX={1}>
-      <Text dimColor>↑↓/jk nav │ ud scroll │ r toggle │ c clear │ p pause │ q quit</Text>
+      <Text dimColor>↑↓/jk nav │ ud/scroll detail │ r req/res │ h headers │ c clear │ p pause │ q quit</Text>
     </Box>
   );
 });
@@ -91,12 +92,17 @@ export function App() {
   const clearRequests = useStore(selectClearRequests);
   const togglePaused = useStore(selectTogglePaused);
   const { exit } = useApp();
+  const detailRef = React.useRef<DetailScrollHandle>(null);
 
   // Calculate heights once on mount
+  // Header(1) + Filter(1) + Footer(1) + borders(2 top/bottom per pane) = 5 overhead
   const [mainHeight] = React.useState(() => {
     const rows = process.stdout.rows ?? 24;
-    return Math.max(5, rows - 4);
+    return Math.max(5, rows - 5);
   });
+
+  // Inner height accounts for border (2 lines: top + bottom)
+  const innerHeight = mainHeight - 2;
 
   useInput((input, key) => {
     if (key.escape && filterFocused) {
@@ -112,16 +118,21 @@ export function App() {
     }
   });
 
+  useMouseScroll((direction) => {
+    const delta = direction === "down" ? 3 : -3;
+    detailRef.current?.scroll(delta);
+  });
+
   return (
     <Box flexDirection="column">
       <Header />
       <FilterBar />
       <Box height={mainHeight}>
-        <Box width="50%" flexDirection="column">
-          <RequestList maxItems={mainHeight} />
+        <Box width="50%" flexDirection="column" borderStyle="single" borderColor="gray">
+          <RequestList maxItems={innerHeight} />
         </Box>
-        <Box width="50%" flexDirection="column">
-          <RequestDetail visibleLines={mainHeight - 5} />
+        <Box width="50%" flexDirection="column" borderStyle="single" borderColor="gray">
+          <RequestDetail ref={detailRef} visibleLines={innerHeight - 4} />
         </Box>
       </Box>
       <Footer />

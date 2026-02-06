@@ -21,6 +21,18 @@ process.stdout.write = function (
   return originalWrite(chunk, ...(args as []));
 } as typeof process.stdout.write;
 
+// Enable SGR extended mouse mode for scroll wheel support
+// Unsupported terminals safely ignore these sequences
+const MOUSE_ENABLE = "\x1b[?1006h";
+const MOUSE_DISABLE = "\x1b[?1006l";
+originalWrite(MOUSE_ENABLE);
+
+const cleanup = () => {
+  originalWrite(MOUSE_DISABLE);
+};
+process.on("SIGINT", cleanup);
+process.on("SIGTERM", cleanup);
+
 // Start WebSocket server
 const PORT = parseInt(process.env.NETWATCH_PORT || "9090", 10);
 const wss = startServer(PORT);
@@ -32,6 +44,7 @@ const { waitUntilExit } = render(<App />, {
 });
 
 waitUntilExit().then(() => {
+  cleanup();
   wss.close();
   process.exit(0);
 });
