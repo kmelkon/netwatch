@@ -112,12 +112,15 @@ export function App() {
   const [focusedPane, setFocusedPane] = React.useState<"list" | "detail">("list");
   const [hoveredPane, setHoveredPane] = React.useState<"list" | "detail" | null>(null);
 
-  // Calculate heights once on mount
-  // Header(1) + Filter(1) + Footer(1) + borders(2 top/bottom per pane) = 5 overhead
-  const [mainHeight] = React.useState(() => {
-    const rows = process.stdout.rows ?? 24;
-    return Math.max(5, rows - 5);
-  });
+  // Dynamic height: Header(1) + Filter(1) + Footer(1) + borders(2 top/bottom per pane) = 5 overhead
+  const computeHeight = () => Math.max(5, (process.stdout.rows ?? 24) - 5);
+  const [mainHeight, setMainHeight] = React.useState(computeHeight);
+
+  React.useEffect(() => {
+    const onResize = () => setMainHeight(computeHeight());
+    process.stdout.on("resize", onResize);
+    return () => { process.stdout.off("resize", onResize); };
+  }, []);
 
   // Inner height accounts for border (2 lines: top + bottom)
   const innerHeight = mainHeight - 2;
