@@ -21,7 +21,11 @@ interface NetwatchState {
   togglePaused: () => void;
 }
 
-const MAX_REQUESTS = 500;
+let MAX_REQUESTS = 500;
+
+export function setMaxRequests(max: number) {
+  MAX_REQUESTS = max;
+}
 const BATCH_INTERVAL = 100; // ms
 
 // Batch pending requests to reduce re-renders
