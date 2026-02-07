@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { useStore } from "../store.js";
 import { useShallow } from "zustand/react/shallow";
 import type { StoredRequest } from "../types.js";
+import { formatBytes } from "../utils.js";
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("en-US", { hour12: false });
@@ -123,7 +124,7 @@ const RequestRow = React.memo(function RequestRow({
   return (
     <Box>
       <Text inverse={selected}>
-        {selected ? ">" : " "}{formatTime(request.timestamp)} {method} {statusColor(String(request.status))} {truncateUrl(request.url)}
+        {request.bookmarked ? "★" : selected ? ">" : " "}{formatTime(request.timestamp)} {method} {statusColor(String(request.status))} {truncateUrl(request.url)} <Text dimColor>{formatBytes(request.responseSize)}</Text>
       </Text>
     </Box>
   );
