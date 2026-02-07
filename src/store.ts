@@ -2,6 +2,18 @@ import { create } from "zustand";
 import type { StoredRequest } from "./types.js";
 import { filterRequests } from "./utils.js";
 
+function deriveFiltered(
+  requests: StoredRequest[],
+  filterText: string,
+  showBookmarksOnly: boolean
+): StoredRequest[] {
+  let result = filterRequests(requests, filterText);
+  if (showBookmarksOnly) {
+    result = result.filter((r) => r.bookmarked);
+  }
+  return result;
+}
+
 interface NetwatchState {
   connected: boolean;
   clientName: string | null;
@@ -11,6 +23,7 @@ interface NetwatchState {
   filterText: string;
   filterFocused: boolean;
   paused: boolean;
+  showBookmarksOnly: boolean;
 
   setConnected: (connected: boolean, clientName?: string | null) => void;
   addRequest: (request: StoredRequest) => void;
@@ -19,6 +32,8 @@ interface NetwatchState {
   setFilterText: (text: string) => void;
   setFilterFocused: (focused: boolean) => void;
   togglePaused: () => void;
+  toggleBookmark: (id: number) => void;
+  toggleBookmarksFilter: () => void;
 }
 
 let MAX_REQUESTS = 500;
@@ -43,7 +58,7 @@ function flushRequests(set: (fn: (state: NetwatchState) => Partial<NetwatchState
     const requests = [...toAdd, ...state.requests].slice(0, MAX_REQUESTS);
     return {
       requests,
-      filteredRequests: filterRequests(requests, state.filterText),
+      filteredRequests: deriveFiltered(requests, state.filterText, state.showBookmarksOnly),
     };
   });
 }
@@ -57,6 +72,7 @@ export const useStore = create<NetwatchState>((set, get) => ({
   filterText: "",
   filterFocused: false,
   paused: false,
+  showBookmarksOnly: false,
 
   setConnected: (connected, clientName = null) =>
     set({ connected, clientName: connected ? clientName : null }),
@@ -77,7 +93,14 @@ export const useStore = create<NetwatchState>((set, get) => ({
       clearTimeout(batchTimeout);
       batchTimeout = null;
     }
-    set({ requests: [], filteredRequests: [], selectedIndex: 0 });
+    set((state) => {
+      const kept = state.requests.filter((r) => r.bookmarked);
+      return {
+        requests: kept,
+        filteredRequests: deriveFiltered(kept, state.filterText, state.showBookmarksOnly),
+        selectedIndex: 0,
+      };
+    });
   },
 
   setSelectedIndex: (index) => set({ selectedIndex: index }),
@@ -85,11 +108,31 @@ export const useStore = create<NetwatchState>((set, get) => ({
   setFilterText: (text) =>
     set((state) => ({
       filterText: text,
-      filteredRequests: filterRequests(state.requests, text),
+      filteredRequests: deriveFiltered(state.requests, text, state.showBookmarksOnly),
       selectedIndex: 0,
     })),
 
   setFilterFocused: (focused) => set({ filterFocused: focused }),
 
   togglePaused: () => set((state) => ({ paused: !state.paused })),
+
+  toggleBookmark: (id) =>
+    set((state) => {
+      const requests = state.requests.map((r) =>
+        r.id === id ? { ...r, bookmarked: !r.bookmarked } : r
+      );
+      return {
+        requests,
+        filteredRequests: deriveFiltered(requests, state.filterText, state.showBookmarksOnly),
+      };
+    }),
+
+  toggleBookmarksFilter: () =>
+    set((state) => {
+      const showBookmarksOnly = !state.showBookmarksOnly;
+      return {
+        showBookmarksOnly,
+        filteredRequests: deriveFiltered(state.requests, state.filterText, showBookmarksOnly),
+      };
+    }),
 }));
