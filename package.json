@@ -6,7 +6,9 @@
   "main": "src/cli.tsx",
   "scripts": {
     "start": "tsx src/cli.tsx",
-    "dev": "tsx watch src/cli.tsx"
+    "dev": "tsx watch src/cli.tsx",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "chalk": "^5.6.2",
@@ -21,6 +23,7 @@
     "@types/react": "^19.2.13",
     "@types/ws": "^8.18.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }
