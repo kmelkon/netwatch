@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { filterRequests, formatBytes } from "./utils.js";
+import { filterRequests, formatBytes, matchesIgnoredUrl } from "./utils.js";
 import type { StoredRequest } from "./types.js";
 
 function makeRequest(overrides: Partial<StoredRequest> = {}): StoredRequest {
@@ -49,6 +49,34 @@ describe("filterRequests", () => {
     const requests = [makeRequest({ id: 1, url: "https://api.example.com/users" })];
     const result = filterRequests(requests, "zzzzzzzzz");
     expect(result).toHaveLength(0);
+  });
+});
+
+describe("matchesIgnoredUrl", () => {
+  it("returns false for empty patterns", () => {
+    expect(matchesIgnoredUrl("https://api.example.com/users", [])).toBe(false);
+  });
+
+  it("matches by substring (case-insensitive)", () => {
+    expect(matchesIgnoredUrl("https://api.example.com/symbolicate", ["symbolicate"])).toBe(true);
+    expect(matchesIgnoredUrl("https://api.example.com/Symbolicate", ["symbolicate"])).toBe(true);
+    expect(matchesIgnoredUrl("https://api.example.com/users", ["symbolicate"])).toBe(false);
+  });
+
+  it("matches by glob pattern", () => {
+    expect(matchesIgnoredUrl("https://api.example.com/index.bundle", ["*.bundle"])).toBe(true);
+    expect(matchesIgnoredUrl("https://api.example.com/index.json", ["*.bundle"])).toBe(false);
+    expect(matchesIgnoredUrl("https://api.example.com/v1/users", ["*/v1/*"])).toBe(true);
+  });
+
+  it("matches by regex pattern", () => {
+    expect(matchesIgnoredUrl("https://api.example.com/symbolicate", ["/symbolicate/"])).toBe(true);
+    expect(matchesIgnoredUrl("https://api.example.com/users", ["/symbolicate/"])).toBe(false);
+    expect(matchesIgnoredUrl("https://api.example.com/v1/users", ["/\\/v\\d+\\//"])).toBe(true);
+  });
+
+  it("matches if any pattern matches", () => {
+    expect(matchesIgnoredUrl("https://api.example.com/health", ["symbolicate", "health"])).toBe(true);
   });
 });
 
