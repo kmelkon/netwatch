@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "ink";
 import chalk from "chalk";
 import { useStore } from "../store.js";
 import { useShallow } from "zustand/react/shallow";
+import { formatBytes } from "../utils.js";
 
 function formatJson(data: unknown): string {
   if (data === null || data === undefined) return "";
@@ -142,7 +143,7 @@ export const RequestDetail = React.memo(
     return (
       <Box flexDirection="column" paddingX={1}>
         <Text>
-          <Text bold>{request.method}</Text> {statusBadge(request.status)} <Text dimColor>{request.duration}ms</Text>
+          <Text bold>{request.method}</Text> {statusBadge(request.status)} <Text dimColor>{request.duration}ms {formatBytes(request.requestSize)} → {formatBytes(request.responseSize)}</Text>
         </Text>
         <Text wrap="truncate" dimColor>{request.url}</Text>
         <Text dimColor>

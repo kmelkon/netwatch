@@ -9,6 +9,12 @@ import { useStore } from "./store.js";
 
 let messageCounter = 0;
 
+export function computeBodySize(body: unknown): number {
+  if (body === null || body === undefined) return 0;
+  if (typeof body === "string") return Buffer.byteLength(body, "utf-8");
+  return Buffer.byteLength(JSON.stringify(body), "utf-8");
+}
+
 export function startServer(port = 9090): WebSocketServer {
   const wss = new WebSocketServer({ port });
 
@@ -50,6 +56,8 @@ function handleMessage(ws: WebSocket, message: ReactotronCommand) {
 
     case "api.response": {
       const payload = message.payload as ApiResponsePayload;
+      const requestBody = payload.request.data;
+      const responseBody = payload.response.body;
       const request: StoredRequest = {
         id: messageCounter++,
         timestamp: new Date(message.date),
@@ -57,13 +65,16 @@ function handleMessage(ws: WebSocket, message: ReactotronCommand) {
         url: payload.request.url,
         status: payload.response.status,
         duration: payload.duration,
+        requestSize: computeBodySize(requestBody),
+        responseSize: computeBodySize(responseBody),
+        bookmarked: false,
         request: {
           headers: payload.request.headers,
-          body: payload.request.data,
+          body: requestBody,
         },
         response: {
           headers: payload.response.headers,
-          body: payload.response.body,
+          body: responseBody,
         },
       };
       store.addRequest(request);

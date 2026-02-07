@@ -3,6 +3,8 @@ import React from "react";
 import { render } from "ink";
 import { App } from "./components/App.js";
 import { startServer } from "./server.js";
+import { loadConfig } from "./config.js";
+import { setMaxRequests } from "./store.js";
 
 // Wrap stdout.write with Synchronized Output escape sequences
 // Terminals that support it (iTerm2, kitty, WezTerm, etc.) will buffer
@@ -33,8 +35,12 @@ const cleanup = () => {
 process.on("SIGINT", cleanup);
 process.on("SIGTERM", cleanup);
 
+// Load config
+const config = loadConfig();
+setMaxRequests(config.maxRequests);
+
 // Start WebSocket server
-const PORT = parseInt(process.env.NETWATCH_PORT || "9090", 10);
+const PORT = parseInt(process.env.NETWATCH_PORT || String(config.port), 10);
 const wss = startServer(PORT);
 
 // Render Ink app
