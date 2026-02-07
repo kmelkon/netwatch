@@ -38,6 +38,9 @@ export interface StoredRequest {
   url: string;
   status: number;
   duration: number;
+  requestSize: number;
+  responseSize: number;
+  bookmarked: boolean;
   request: {
     headers: Record<string, string>;
     body: unknown;
