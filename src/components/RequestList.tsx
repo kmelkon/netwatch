@@ -143,11 +143,14 @@ const RequestRow = React.memo(function RequestRow({
 }) {
   const statusColor = getStatusColor(request.status);
   const method = request.method.slice(0, 3);
-  const indicator = (request.bookmarked ? "★" : " ") + (selected ? ">" : " ");
+  const isError = request.status >= 400;
+  const bookmarkIcon = request.bookmarked ? "★" : " ";
+  const errorIcon = isError ? "!" : " ";
+  const indicator = bookmarkIcon + errorIcon + (selected ? ">" : " ");
 
   return (
     <Box>
-      <Text inverse={selected} wrap="truncate-end">
+      <Text inverse={selected} wrap="truncate-end" backgroundColor={isError && !selected ? "red" : undefined}>
         {indicator}{formatTime(request.timestamp)} {method} {statusColor(String(request.status))} {truncateUrl(request.url, urlMaxLen)} <Text dimColor>{formatBytes(request.responseSize)}</Text>
       </Text>
     </Box>

@@ -24,6 +24,10 @@ interface NetwatchState {
   filterFocused: boolean;
   paused: boolean;
   showBookmarksOnly: boolean;
+  searchHistory: string[];
+  showStats: boolean;
+  compareMode: boolean;
+  compareSelection: number | null;
 
   setConnected: (connected: boolean, clientName?: string | null) => void;
   addRequest: (request: StoredRequest) => void;
@@ -34,6 +38,11 @@ interface NetwatchState {
   togglePaused: () => void;
   toggleBookmark: (id: number) => void;
   toggleBookmarksFilter: () => void;
+  addSearchHistory: (text: string) => void;
+  toggleStats: () => void;
+  loadSession: (requests: StoredRequest[]) => void;
+  toggleCompareMode: () => void;
+  setCompareSelection: (id: number | null) => void;
 }
 
 let MAX_REQUESTS = 500;
@@ -73,6 +82,10 @@ export const useStore = create<NetwatchState>((set, get) => ({
   filterFocused: false,
   paused: false,
   showBookmarksOnly: false,
+  searchHistory: [],
+  showStats: false,
+  compareMode: false,
+  compareSelection: null,
 
   setConnected: (connected, clientName = null) =>
     set({ connected, clientName: connected ? clientName : null }),
@@ -135,4 +148,28 @@ export const useStore = create<NetwatchState>((set, get) => ({
         filteredRequests: deriveFiltered(state.requests, state.filterText, showBookmarksOnly),
       };
     }),
+
+  addSearchHistory: (text) =>
+    set((state) => {
+      if (!text || state.searchHistory.includes(text)) return {};
+      const searchHistory = [text, ...state.searchHistory].slice(0, 10);
+      return { searchHistory };
+    }),
+
+  toggleStats: () => set((state) => ({ showStats: !state.showStats })),
+
+  loadSession: (requests) =>
+    set((state) => ({
+      requests,
+      filteredRequests: deriveFiltered(requests, state.filterText, state.showBookmarksOnly),
+      selectedIndex: 0,
+    })),
+
+  toggleCompareMode: () =>
+    set((state) => ({
+      compareMode: !state.compareMode,
+      compareSelection: null,
+    })),
+
+  setCompareSelection: (id) => set({ compareSelection: id }),
 }));

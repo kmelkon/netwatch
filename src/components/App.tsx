@@ -5,10 +5,13 @@ import TextInput from "ink-text-input";
 import { useStore } from "../store.js";
 import { RequestList } from "./RequestList.js";
 import { RequestDetail, type DetailScrollHandle } from "./RequestDetail.js";
+import { StatsPanel } from "./StatsPanel.js";
 import { useMouse } from "../hooks/useMouse.js";
 import { formatBytes } from "../utils.js";
 import { toCurl } from "../utils/curl.js";
 import { exportToFile } from "../utils/export.js";
+import { saveSession, loadSession, hasSession } from "../utils/session.js";
+import { replayRequest } from "../utils/replay.js";
 
 // Stable selectors for Header
 const selectConnected = (s: ReturnType<typeof useStore.getState>) => s.connected;
@@ -20,6 +23,7 @@ const selectFilteredCount = (s: ReturnType<typeof useStore.getState>) => s.filte
 const selectHasFilter = (s: ReturnType<typeof useStore.getState>) => s.filterText.length > 0;
 const selectPaused = (s: ReturnType<typeof useStore.getState>) => s.paused;
 const selectShowBookmarksOnly = (s: ReturnType<typeof useStore.getState>) => s.showBookmarksOnly;
+const selectShowStats = (s: ReturnType<typeof useStore.getState>) => s.showStats;
 
 // Stable selectors for FilterBar
 const selectFilterText = (s: ReturnType<typeof useStore.getState>) => s.filterText;
@@ -32,6 +36,9 @@ const selectClearRequests = (s: ReturnType<typeof useStore.getState>) => s.clear
 const selectTogglePaused = (s: ReturnType<typeof useStore.getState>) => s.togglePaused;
 const selectToggleBookmark = (s: ReturnType<typeof useStore.getState>) => s.toggleBookmark;
 const selectToggleBookmarksFilter = (s: ReturnType<typeof useStore.getState>) => s.toggleBookmarksFilter;
+const selectToggleStats = (s: ReturnType<typeof useStore.getState>) => s.toggleStats;
+const selectLoadSession = (s: ReturnType<typeof useStore.getState>) => s.loadSession;
+const selectAddSearchHistory = (s: ReturnType<typeof useStore.getState>) => s.addSearchHistory;
 
 const Header = React.memo(function Header() {
   const connected = useStore(selectConnected);
@@ -42,6 +49,7 @@ const Header = React.memo(function Header() {
   const hasFilter = useStore(selectHasFilter);
   const paused = useStore(selectPaused);
   const showBookmarksOnly = useStore(selectShowBookmarksOnly);
+  const showStats = useStore(selectShowStats);
 
   return (
     <Box paddingX={1}>
@@ -67,6 +75,12 @@ const Header = React.memo(function Header() {
         <>
           <Text> │ </Text>
           <Text color="red">PAUSED</Text>
+        </>
+      )}
+      {showStats && (
+        <>
+          <Text> │ </Text>
+          <Text color="cyan">STATS</Text>
         </>
       )}
     </Box>
@@ -114,7 +128,11 @@ const Footer = React.memo(function Footer() {
       <KeyBadge keys="/" label="filter" />
       <KeyBadge keys="b" label="bookmark" />
       <KeyBadge keys="x" label="curl" />
+      <KeyBadge keys="R" label="replay" />
       <KeyBadge keys="e" label="export" />
+      <KeyBadge keys="s" label="stats" />
+      <KeyBadge keys="S" label="save" />
+      <KeyBadge keys="L" label="load" />
       <KeyBadge keys="c" label="clear" />
       <KeyBadge keys="p" label="pause" />
       <KeyBadge keys="q" label="quit" />
@@ -143,12 +161,17 @@ export function App() {
   const togglePaused = useStore(selectTogglePaused);
   const toggleBookmark = useStore(selectToggleBookmark);
   const toggleBookmarksFilter = useStore(selectToggleBookmarksFilter);
+  const toggleStats = useStore(selectToggleStats);
+  const loadSessionStore = useStore(selectLoadSession);
+  const addSearchHistory = useStore(selectAddSearchHistory);
+  const showStats = useStore(selectShowStats);
   const { exit } = useApp();
   const detailRef = React.useRef<DetailScrollHandle>(null);
   const [focusedPane, setFocusedPane] = React.useState<"list" | "detail">("list");
   const [hoveredPane, setHoveredPane] = React.useState<"list" | "detail" | null>(null);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const [exportPrompt, setExportPrompt] = React.useState(false);
+  const [replayPrompt, setReplayPrompt] = React.useState(false);
   const clearPendingRef = React.useRef(false);
   const clearTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -159,19 +182,42 @@ export function App() {
   }, []);
 
   // Dynamic height: Header(1) + Filter(1) + Footer(1) + borders(2 top/bottom per pane) = 5 overhead
-  const computeHeight = () => Math.max(5, (process.stdout.rows ?? 24) - 5);
+  // If stats shown, add StatsPanel(4) = 9 total overhead
+  const computeHeight = () => Math.max(5, (process.stdout.rows ?? 24) - (showStats ? 9 : 5));
   const [mainHeight, setMainHeight] = React.useState(computeHeight);
 
   React.useEffect(() => {
     const onResize = () => setMainHeight(computeHeight());
     process.stdout.on("resize", onResize);
     return () => { process.stdout.off("resize", onResize); };
-  }, []);
+  }, [showStats]);
 
   // Inner height accounts for border (2 lines: top + bottom)
   const innerHeight = mainHeight - 2;
 
   useInput((input, key) => {
+    // Replay prompt takes priority
+    if (replayPrompt) {
+      if (input === "y" || input === "Y") {
+        const { filteredRequests, selectedIndex } = useStore.getState();
+        const selected = filteredRequests[selectedIndex];
+        if (selected) {
+          showStatus("Replaying request...");
+          replayRequest(selected).then((result) => {
+            if (result.success) {
+              showStatus(`Replay: ${result.status} in ${result.duration}ms`);
+            } else {
+              showStatus(`Replay failed: ${result.error}`);
+            }
+          });
+        }
+        setReplayPrompt(false);
+      } else if (input === "n" || input === "N" || key.escape) {
+        setReplayPrompt(false);
+      }
+      return;
+    }
+
     // Export format prompt takes priority
     if (exportPrompt) {
       if (input === "1" || input === "2") {
@@ -195,6 +241,8 @@ export function App() {
     }
 
     if (key.escape && filterFocused) {
+      const { filterText } = useStore.getState();
+      if (filterText) addSearchHistory(filterText);
       setFilterFocused(false);
     } else if (input === "/" && !filterFocused) {
       setFilterFocused(true);
@@ -230,6 +278,29 @@ export function App() {
       }
     } else if (input === "e" && !filterFocused) {
       setExportPrompt(true);
+    } else if (input === "s" && !filterFocused) {
+      toggleStats();
+    } else if (input === "S" && !filterFocused) {
+      const { requests } = useStore.getState();
+      if (requests.length > 0) {
+        const saved = saveSession(requests);
+        showStatus(saved ? "Session saved" : "Save failed");
+      } else {
+        showStatus("No requests to save");
+      }
+    } else if (input === "L" && !filterFocused) {
+      const session = loadSession();
+      if (session && session.length > 0) {
+        loadSessionStore(session);
+        showStatus(`Loaded ${session.length} requests`);
+      } else {
+        showStatus("No session found");
+      }
+    } else if (input === "R" && !filterFocused) {
+      const { filteredRequests, selectedIndex } = useStore.getState();
+      if (filteredRequests[selectedIndex]) {
+        setReplayPrompt(true);
+      }
     }
   });
 
@@ -254,6 +325,7 @@ export function App() {
     <Box flexDirection="column">
       <Header />
       <FilterBar />
+      {showStats && <StatsPanel />}
       <Box height={mainHeight}>
         <Box
           width="50%"
@@ -272,6 +344,14 @@ export function App() {
           <RequestDetail ref={detailRef} visibleLines={innerHeight - 4} />
         </Box>
       </Box>
+      {replayPrompt && (
+        <Box paddingX={1}>
+          <Text color="yellow">Replay this request? </Text>
+          <Text><Text bold color="cyan">Y</Text><Text dimColor> Yes  </Text></Text>
+          <Text><Text bold color="cyan">N</Text><Text dimColor> No  </Text></Text>
+          <Text dimColor>esc cancel</Text>
+        </Box>
+      )}
       {exportPrompt && (
         <Box paddingX={1}>
           <Text color="yellow">Export: </Text>

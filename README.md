@@ -20,6 +20,13 @@ Terminal-based network inspector for React Native apps. Captures HTTP requests v
 - **Pause capture** — press `p` to pause incoming requests
 - **Terminal resize** — layout adjusts dynamically on window resize
 - **Config file** — `.netwatchrc` for port, mode, ignored URLs, max requests
+- **Performance stats** — real-time statistics with avg, min, max, and P95 response times
+- **Request replay** — replay any captured request with a single keystroke
+- **Session persistence** — save and load request sessions across app restarts
+- **Enhanced error highlighting** — failed requests (4xx/5xx) are visually distinguished
+- **Bookmarking** — mark important requests for later review
+- **Export functionality** — export requests as HAR or JSON format
+- **cURL generation** — copy requests as cURL commands to clipboard
 
 ## Quick Start
 
@@ -45,7 +52,15 @@ Then configure your React Native app to connect Reactotron to port 9090.
 | `h` | Toggle headers display |
 | `/` | Focus filter input |
 | `Esc` | Exit filter |
-| `c` | Clear all requests |
+| `b` | Bookmark selected request |
+| `B` | Toggle bookmarks-only filter |
+| `x` | Copy request as cURL |
+| `R` | Replay selected request |
+| `e` | Export requests (HAR/JSON) |
+| `s` | Toggle performance stats panel |
+| `S` | Save current session |
+| `L` | Load saved session |
+| `c` | Clear all requests (press twice) |
 | `p` | Pause/resume capture |
 | `q` | Quit |
 
@@ -78,6 +93,51 @@ Create a `.netwatchrc` file in your project root or `~/.netwatchrc`:
 | `maxRequests` | `500` | Max stored requests |
 
 The `NETWATCH_PORT` environment variable overrides the config file port.
+
+## Advanced Features
+
+### Performance Statistics
+
+Press `s` to toggle the performance stats panel, which displays:
+- **Total requests** and **error count** (4xx/5xx status codes)
+- **Average, min, max** response times
+- **P95 latency** — 95th percentile response time
+- **Total bandwidth** consumed
+
+### Request Replay
+
+Press `R` on any request to replay it immediately. Useful for:
+- Testing API endpoints during development
+- Reproducing errors or specific scenarios
+- Validating API changes
+
+### Session Persistence
+
+- Press `S` to save the current request history to disk
+- Press `L` to load a previously saved session
+- Sessions are stored in `~/.netwatch/session.json`
+- Bookmarked requests are preserved when clearing
+
+### Enhanced Error Highlighting
+
+Failed requests (HTTP 4xx/5xx) are:
+- Highlighted with a red background indicator
+- Marked with an `!` icon in the request list
+- Show error count in the stats panel
+
+### Bookmarking
+
+- Press `b` to bookmark/unbookmark the selected request
+- Press `B` to filter and show only bookmarked requests
+- Bookmarked requests are marked with a `★` icon
+- Bookmarks are preserved when clearing all requests
+
+### Export & Integration
+
+- Press `e` to export requests in HAR or JSON format
+- Press `x` to copy the selected request as a cURL command
+- HAR format is compatible with tools like Postman, Insomnia, and HAR viewers
+- cURL commands can be used directly in terminal or scripts
 
 ## Tech Stack
 

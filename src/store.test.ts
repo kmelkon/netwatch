@@ -27,6 +27,10 @@ describe("store", () => {
       filterText: "",
       selectedIndex: 0,
       showBookmarksOnly: false,
+      searchHistory: [],
+      showStats: false,
+      compareMode: false,
+      compareSelection: null,
     });
   });
 
@@ -137,4 +141,44 @@ describe("store", () => {
       expect(state.filteredRequests[0]!.id).toBe(1);
     });
   });
+
+  describe("new features", () => {
+    it("adds search history", () => {
+      useStore.getState().addSearchHistory("test search");
+      const state = useStore.getState();
+      expect(state.searchHistory).toHaveLength(1);
+      expect(state.searchHistory[0]).toBe("test search");
+    });
+
+    it("limits search history to 10 items", () => {
+      for (let i = 0; i < 15; i++) {
+        useStore.getState().addSearchHistory(`search ${i}`);
+      }
+      const state = useStore.getState();
+      expect(state.searchHistory).toHaveLength(10);
+    });
+
+    it("toggles stats panel", () => {
+      let state = useStore.getState();
+      expect(state.showStats).toBe(false);
+      useStore.getState().toggleStats();
+      state = useStore.getState();
+      expect(state.showStats).toBe(true);
+      useStore.getState().toggleStats();
+      state = useStore.getState();
+      expect(state.showStats).toBe(false);
+    });
+
+    it("loads session", () => {
+      const requests = [
+        makeRequest({ id: 1, method: "GET", url: "https://api.example.com/users", status: 200 }),
+        makeRequest({ id: 2, method: "POST", url: "https://api.example.com/users", status: 201 }),
+      ];
+      useStore.getState().loadSession(requests);
+      const state = useStore.getState();
+      expect(state.requests).toHaveLength(2);
+      expect(state.filteredRequests).toHaveLength(2);
+    });
+  });
 });
+
