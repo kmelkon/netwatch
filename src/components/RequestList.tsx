@@ -16,6 +16,12 @@ function getStatusColor(status: number): (s: string) => string {
   return chalk.red;
 }
 
+function getUrlMaxLen(): number {
+  const cols = process.stdout.columns ?? 80;
+  // half the terminal (list pane is 50%) minus overhead for indicator, time, method, status, size
+  return Math.max(20, Math.floor(cols / 2) - 25);
+}
+
 function truncateUrl(url: string, maxLen = 40): string {
   try {
     const parsed = new URL(url);
@@ -32,6 +38,8 @@ const selectFilteredRequests = (s: ReturnType<typeof useStore.getState>) => s.fi
 const selectSelectedIndex = (s: ReturnType<typeof useStore.getState>) => s.selectedIndex;
 const selectSetSelectedIndex = (s: ReturnType<typeof useStore.getState>) => s.setSelectedIndex;
 const selectFilterFocused = (s: ReturnType<typeof useStore.getState>) => s.filterFocused;
+const selectFilterText = (s: ReturnType<typeof useStore.getState>) => s.filterText;
+const selectShowBookmarksOnly = (s: ReturnType<typeof useStore.getState>) => s.showBookmarksOnly;
 
 interface RequestListProps {
   maxItems?: number;
@@ -43,6 +51,10 @@ export const RequestList = React.memo(function RequestList({ maxItems = 20 }: Re
   const selectedIndex = useStore(selectSelectedIndex);
   const setSelectedIndex = useStore(selectSetSelectedIndex);
   const filterFocused = useStore(selectFilterFocused);
+  const filterText = useStore(selectFilterText);
+  const showBookmarksOnly = useStore(selectShowBookmarksOnly);
+
+  const urlMaxLen = getUrlMaxLen();
 
   // Follow-cursor scrolling: scrollTop tracks first visible item
   const scrollTopRef = React.useRef(0);
@@ -84,11 +96,19 @@ export const RequestList = React.memo(function RequestList({ maxItems = 20 }: Re
   );
 
   if (filteredRequests.length === 0) {
+    let emptyMessage: string;
+    if (requestCount === 0) {
+      emptyMessage = "Waiting for requests...";
+    } else if (showBookmarksOnly) {
+      emptyMessage = "No bookmarked requests";
+    } else if (filterText) {
+      emptyMessage = `No matches for "${filterText}"`;
+    } else {
+      emptyMessage = "No matches";
+    }
     return (
       <Box flexDirection="column" paddingX={1}>
-        <Text dimColor>
-          {requestCount === 0 ? "No requests yet..." : "No matches"}
-        </Text>
+        <Text dimColor>{emptyMessage}</Text>
       </Box>
     );
   }
@@ -100,6 +120,7 @@ export const RequestList = React.memo(function RequestList({ maxItems = 20 }: Re
           key={req.id}
           request={req}
           selected={scrollTop + idx === selectedIndex}
+          urlMaxLen={urlMaxLen}
         />
       ))}
       {filteredRequests.length > maxItems && (
@@ -114,17 +135,20 @@ export const RequestList = React.memo(function RequestList({ maxItems = 20 }: Re
 const RequestRow = React.memo(function RequestRow({
   request,
   selected,
+  urlMaxLen,
 }: {
   request: StoredRequest;
   selected: boolean;
+  urlMaxLen: number;
 }) {
   const statusColor = getStatusColor(request.status);
   const method = request.method.slice(0, 3);
+  const indicator = (request.bookmarked ? "★" : " ") + (selected ? ">" : " ");
 
   return (
     <Box>
       <Text inverse={selected}>
-        {request.bookmarked ? "★" : selected ? ">" : " "}{formatTime(request.timestamp)} {method} {statusColor(String(request.status))} {truncateUrl(request.url)} <Text dimColor>{formatBytes(request.responseSize)}</Text>
+        {indicator}{formatTime(request.timestamp)} {method} {statusColor(String(request.status))} {truncateUrl(request.url, urlMaxLen)} <Text dimColor>{formatBytes(request.responseSize)}</Text>
       </Text>
     </Box>
   );
