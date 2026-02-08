@@ -122,7 +122,7 @@ const Footer = React.memo(function Footer() {
   );
 });
 
-function copyToClipboard(text: string): void {
+function copyToClipboard(text: string): boolean {
   const escaped = text.replace(/'/g, "'\\''");
   try {
     if (process.platform === "darwin") {
@@ -130,8 +130,9 @@ function copyToClipboard(text: string): void {
     } else {
       execSync(`printf '%s' '${escaped}' | xclip -sel clip`);
     }
+    return true;
   } catch {
-    // Clipboard not available
+    return false;
   }
 }
 
@@ -212,8 +213,8 @@ export function App() {
       const selected = filteredRequests[selectedIndex];
       if (selected) {
         const curl = toCurl(selected);
-        copyToClipboard(curl);
-        showStatus("Copied!");
+        const ok = copyToClipboard(curl);
+        showStatus(ok ? "Copied!" : "Copy failed");
       }
     } else if (input === "e" && !filterFocused) {
       setExportPrompt(true);

@@ -38,10 +38,13 @@ process.on("SIGTERM", cleanup);
 // Load config
 const config = loadConfig();
 setMaxRequests(config.maxRequests);
+if (config.mode === "standalone") {
+  console.warn("Warning: standalone mode is not yet implemented. Running in reactotron mode.");
+}
 
 // Start WebSocket server
 const PORT = parseInt(process.env.NETWATCH_PORT || String(config.port), 10);
-const wss = startServer(PORT);
+const wss = startServer(PORT, config.ignoredUrls);
 
 // Render Ink app
 const { waitUntilExit } = render(<App />, {
