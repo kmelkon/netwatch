@@ -149,6 +149,8 @@ export function App() {
   const [hoveredPane, setHoveredPane] = React.useState<"list" | "detail" | null>(null);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const [exportPrompt, setExportPrompt] = React.useState(false);
+  const clearPendingRef = React.useRef(false);
+  const clearTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Status flash — auto-clears after 2s
   const showStatus = React.useCallback((msg: string) => {
@@ -172,8 +174,8 @@ export function App() {
   useInput((input, key) => {
     // Export format prompt takes priority
     if (exportPrompt) {
-      if (input === "h" || input === "j") {
-        const format = input === "h" ? "har" : "json";
+      if (input === "1" || input === "2") {
+        const format = input === "1" ? "har" : "json";
         const { requests } = useStore.getState();
         if (requests.length === 0) {
           showStatus("No requests to export");
@@ -197,7 +199,17 @@ export function App() {
     } else if (input === "/" && !filterFocused) {
       setFilterFocused(true);
     } else if (input === "c" && !filterFocused) {
-      clearRequests();
+      if (clearPendingRef.current) {
+        clearPendingRef.current = false;
+        if (clearTimeoutRef.current) clearTimeout(clearTimeoutRef.current);
+        clearRequests();
+      } else {
+        clearPendingRef.current = true;
+        showStatus("Press c again to clear");
+        clearTimeoutRef.current = setTimeout(() => {
+          clearPendingRef.current = false;
+        }, 2000);
+      }
     } else if (input === "p" && !filterFocused) {
       togglePaused();
     } else if (input === "q" && !filterFocused) {
@@ -263,8 +275,8 @@ export function App() {
       {exportPrompt && (
         <Box paddingX={1}>
           <Text color="yellow">Export: </Text>
-          <Text><Text bold color="cyan">h</Text><Text dimColor> HAR  </Text></Text>
-          <Text><Text bold color="cyan">j</Text><Text dimColor> JSON  </Text></Text>
+          <Text><Text bold color="cyan">1</Text><Text dimColor> HAR  </Text></Text>
+          <Text><Text bold color="cyan">2</Text><Text dimColor> JSON  </Text></Text>
           <Text dimColor>esc cancel</Text>
         </Box>
       )}

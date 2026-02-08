@@ -3,12 +3,35 @@
   "version": "1.0.0",
   "description": "Terminal-based network inspector for React Native apps",
   "type": "module",
-  "main": "src/cli.tsx",
+  "main": "dist/cli.js",
+  "bin": {
+    "netwatch": "dist/cli.js"
+  },
+  "files": [
+    "dist/"
+  ],
   "scripts": {
     "start": "tsx src/cli.tsx",
     "dev": "tsx watch src/cli.tsx",
+    "build": "esbuild src/cli.tsx --bundle --platform=node --format=esm --outfile=dist/cli.js --banner:js='#!/usr/bin/env node' --external:yoga-wasm-web --external:react-devtools-core",
+    "prepublishOnly": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "react-native",
+    "network",
+    "inspector",
+    "terminal",
+    "debugging"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kmelkon/netwatch"
   },
   "dependencies": {
     "chalk": "^5.6.2",
@@ -22,6 +45,7 @@
   "devDependencies": {
     "@types/react": "^19.2.13",
     "@types/ws": "^8.18.1",
+    "esbuild": "^0.25.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
