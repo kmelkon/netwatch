@@ -18,8 +18,8 @@ function getStatusColor(status: number): (s: string) => string {
 
 function getUrlMaxLen(): number {
   const cols = process.stdout.columns ?? 80;
-  // half the terminal (list pane is 50%) minus overhead for indicator, time, method, status, size
-  return Math.max(20, Math.floor(cols / 2) - 25);
+  // half terminal (50% pane) minus borders(2) + indicator(2) + time(8) + method(3) + status(3) + size(≤7) + spaces(5)
+  return Math.max(20, Math.floor(cols / 2) - 30);
 }
 
 function truncateUrl(url: string, maxLen = 40): string {
@@ -147,7 +147,7 @@ const RequestRow = React.memo(function RequestRow({
 
   return (
     <Box>
-      <Text inverse={selected}>
+      <Text inverse={selected} wrap="truncate-end">
         {indicator}{formatTime(request.timestamp)} {method} {statusColor(String(request.status))} {truncateUrl(request.url, urlMaxLen)} <Text dimColor>{formatBytes(request.responseSize)}</Text>
       </Text>
     </Box>
