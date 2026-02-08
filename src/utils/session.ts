@@ -6,10 +6,30 @@ import type { StoredRequest } from "../types.js";
 const SESSION_DIR = join(homedir(), ".netwatch");
 const SESSION_FILE = join(SESSION_DIR, "session.json");
 
+interface SerializableRequest {
+  id: number;
+  timestamp: string;
+  method: string;
+  url: string;
+  status: number;
+  duration: number;
+  requestSize: number;
+  responseSize: number;
+  bookmarked: boolean;
+  request: {
+    headers: Record<string, string>;
+    body: unknown;
+  };
+  response: {
+    headers: Record<string, string>;
+    body: string;
+  };
+}
+
 interface Session {
   version: string;
   timestamp: string;
-  requests: StoredRequest[];
+  requests: SerializableRequest[];
 }
 
 export function saveSession(requests: StoredRequest[]): boolean {
@@ -23,8 +43,8 @@ export function saveSession(requests: StoredRequest[]): boolean {
       timestamp: new Date().toISOString(),
       requests: requests.map((r) => ({
         ...r,
-        timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : r.timestamp,
-      })) as any,
+        timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : String(r.timestamp),
+      })),
     };
 
     writeFileSync(SESSION_FILE, JSON.stringify(session, null, 2), "utf-8");
@@ -45,7 +65,7 @@ export function loadSession(): StoredRequest[] | null {
 
     return session.requests.map((r) => ({
       ...r,
-      timestamp: new Date(r.timestamp as any),
+      timestamp: new Date(r.timestamp),
     }));
   } catch {
     return null;

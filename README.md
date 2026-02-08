@@ -130,7 +130,7 @@ Failed requests (HTTP 4xx/5xx) are:
 - Press `b` to bookmark/unbookmark the selected request
 - Press `B` to filter and show only bookmarked requests
 - Bookmarked requests are marked with a `★` icon
-- Bookmarks are preserved when clearing all requests
+- Bookmarks are preserved when clearing all requests (using the `c` key twice)
 
 ### Export & Integration
 

@@ -2,6 +2,9 @@ import React from "react";
 import { Box, Text } from "ink";
 import { useStore } from "../store.js";
 import { formatBytes } from "../utils.js";
+import type { StoredRequest } from "../types.js";
+
+type RequestArray = StoredRequest[];
 
 interface Stats {
   totalRequests: number;
@@ -13,7 +16,7 @@ interface Stats {
   totalBandwidth: number;
 }
 
-function calculateStats(requests: typeof useStore extends (...args: any) => infer R ? R extends { requests: infer T } ? T : never : never): Stats {
+function calculateStats(requests: RequestArray): Stats {
   if (requests.length === 0) {
     return {
       totalRequests: 0,
@@ -31,8 +34,9 @@ function calculateStats(requests: typeof useStore extends (...args: any) => infe
   const totalBandwidth = requests.reduce((sum, r) => sum + r.responseSize, 0);
 
   const avg = durations.reduce((sum, d) => sum + d, 0) / durations.length;
-  const min = durations[0];
-  const max = durations[durations.length - 1];
+  // Min/max are guaranteed to exist when requests.length > 0
+  const min = durations[0]!;
+  const max = durations[durations.length - 1]!;
   const p95Index = Math.floor(durations.length * 0.95);
   const p95 = durations[p95Index] || max;
 
