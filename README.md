@@ -67,6 +67,12 @@ connect({
 });
 ```
 
+### What gets captured
+
+`netwatch-client` only patches `fetch()` — it does **not** intercept `XMLHttpRequest`. This means your app's HTTP calls are captured, but background traffic from third-party SDKs (e.g. Optimizely, analytics) that use XHR or native HTTP modules won't appear. This is usually desirable since it keeps the request list focused on your app's traffic.
+
+Reactotron's `networking()` plugin patches XHR, so it captures both your app traffic and SDK traffic.
+
 ## Reactotron Setup
 
 Both protocols work on the same port simultaneously — use whichever fits your project.
