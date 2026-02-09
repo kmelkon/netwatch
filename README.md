@@ -6,6 +6,8 @@ Terminal-based network inspector for React Native apps. Captures HTTP requests a
 ![Ink](https://img.shields.io/badge/Ink-6.6-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
+![netwatch demo](.github/demo.gif)
+
 ## Features
 
 - **Split-pane TUI** — request list (left) + detail view (right) with borders
