@@ -67,9 +67,9 @@ connect({
 });
 ```
 
-## Reactotron Setup (Legacy)
+## Reactotron Setup
 
-Reactotron is still supported — both protocols work on the same port simultaneously.
+Both protocols work on the same port simultaneously — use whichever fits your project.
 
 ```typescript
 import Reactotron from "reactotron-react-native";
@@ -82,7 +82,15 @@ Reactotron.configure({
   .connect();
 ```
 
-> **Note:** Reactotron doesn't auto-reconnect. `netwatch-client` is recommended instead.
+> **Tip:** Reactotron doesn't auto-reconnect. Add `onDisconnect` to retry:
+>
+> ```typescript
+> Reactotron.configure({
+>   host: "localhost",
+>   port: 9090,
+>   onDisconnect: () => setTimeout(() => Reactotron.connect(), 3000),
+> })
+> ```
 
 ## Keyboard Shortcuts
 
