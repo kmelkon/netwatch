@@ -3,7 +3,7 @@ import { render } from "ink";
 import { App } from "./components/App.js";
 import { startServer } from "./server.js";
 import { loadConfig } from "./config.js";
-import { setMaxRequests } from "./store.js";
+import { setMaxRequests, setPort } from "./store.js";
 
 // Wrap stdout.write with Synchronized Output escape sequences
 // Terminals that support it (iTerm2, kitty, WezTerm, etc.) will buffer
@@ -39,6 +39,7 @@ const config = loadConfig();
 setMaxRequests(config.maxRequests);
 // Start WebSocket server
 const PORT = parseInt(process.env.NETWATCH_PORT || String(config.port), 10);
+setPort(PORT);
 const wss = startServer(PORT, config.ignoredUrls);
 
 // Render Ink app

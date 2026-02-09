@@ -41,6 +41,16 @@ let MAX_REQUESTS = 500;
 export function setMaxRequests(max: number) {
   MAX_REQUESTS = max;
 }
+
+let PORT = 9090;
+
+export function setPort(port: number) {
+  PORT = port;
+}
+
+export function getPort(): number {
+  return PORT;
+}
 const BATCH_INTERVAL = 100; // ms
 
 // Batch pending requests to reduce re-renders
