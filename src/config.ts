@@ -4,14 +4,12 @@ import { homedir } from "node:os";
 
 export interface NetwatchConfig {
   port: number;
-  mode: "reactotron" | "standalone";
   ignoredUrls: string[];
   maxRequests: number;
 }
 
 const DEFAULTS: NetwatchConfig = {
   port: 9090,
-  mode: "reactotron",
   ignoredUrls: [],
   maxRequests: 500,
 };
@@ -34,7 +32,6 @@ export function loadConfig(): NetwatchConfig {
 
   return {
     port: typeof fileConfig.port === "number" ? fileConfig.port : DEFAULTS.port,
-    mode: fileConfig.mode === "standalone" ? "standalone" : DEFAULTS.mode,
     ignoredUrls: Array.isArray(fileConfig.ignoredUrls) ? fileConfig.ignoredUrls : DEFAULTS.ignoredUrls,
     maxRequests: typeof fileConfig.maxRequests === "number" ? fileConfig.maxRequests : DEFAULTS.maxRequests,
   };

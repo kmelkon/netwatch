@@ -1,6 +1,6 @@
 # netwatch
 
-Terminal-based network inspector for React Native apps. Captures HTTP requests via Reactotron and displays them in a flicker-free split-pane TUI.
+Terminal-based network inspector for React Native apps. Captures HTTP requests and displays them in a flicker-free split-pane TUI.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 ![Ink](https://img.shields.io/badge/Ink-6.6-green)
@@ -19,7 +19,9 @@ Terminal-based network inspector for React Native apps. Captures HTTP requests v
 - **Request/response toggle** — press `r` to switch between request and response body
 - **Pause capture** — press `p` to pause incoming requests
 - **Terminal resize** — layout adjusts dynamically on window resize
-- **Config file** — `.netwatchrc` for port, mode, ignored URLs, max requests
+- **Config file** — `.netwatchrc` for port, ignored URLs, max requests
+- **Dual protocol** — supports both `netwatch-client` and Reactotron simultaneously
+- **Auto-reconnect** — `netwatch-client` reconnects automatically, start server anytime
 
 ## Quick Start
 
@@ -33,7 +35,54 @@ npm install --registry https://registry.npmjs.org/
 npm start
 ```
 
-Then configure your React Native app to connect Reactotron to port 9090.
+## Client Setup (Recommended)
+
+Install `netwatch-client` in your React Native app — zero dependencies, patches `fetch` directly:
+
+```bash
+npm install netwatch-client
+```
+
+```typescript
+// App.tsx or index.js
+if (__DEV__) {
+  require("netwatch-client").connect({ name: "MyApp" });
+}
+```
+
+That's it. The client auto-connects to netwatch on `localhost:9090` with exponential backoff — start the server anytime, no app restart needed.
+
+### Client Options
+
+```typescript
+connect({
+  host: "localhost",     // server host
+  port: 9090,            // server port
+  name: "MyApp",         // display name in netwatch
+  platform: "ios",       // optional platform tag
+  ignoredUrls: [         // substring match, skip noisy URLs
+    "/symbolicate",
+    "/logs",
+  ],
+});
+```
+
+## Reactotron Setup (Legacy)
+
+Reactotron is still supported — both protocols work on the same port simultaneously.
+
+```typescript
+import Reactotron from "reactotron-react-native";
+
+Reactotron.configure({
+  host: "localhost",
+  port: 9090,
+})
+  .useReactNative({ networking: true })
+  .connect();
+```
+
+> **Note:** Reactotron doesn't auto-reconnect. `netwatch-client` is recommended instead.
 
 ## Keyboard Shortcuts
 
@@ -45,7 +94,11 @@ Then configure your React Native app to connect Reactotron to port 9090.
 | `h` | Toggle headers display |
 | `/` | Focus filter input |
 | `Esc` | Exit filter |
-| `c` | Clear all requests |
+| `b` | Bookmark selected request |
+| `B` | Toggle bookmarks-only filter |
+| `x` | Copy as cURL |
+| `e` | Export (HAR/JSON) |
+| `c` | Clear all requests (double-tap) |
 | `p` | Pause/resume capture |
 | `q` | Quit |
 
@@ -64,7 +117,6 @@ Create a `.netwatchrc` file in your project root or `~/.netwatchrc`:
 ```json
 {
   "port": 9090,
-  "mode": "reactotron",
   "ignoredUrls": ["/symbolicate", "/logs"],
   "maxRequests": 500
 }
@@ -73,8 +125,7 @@ Create a `.netwatchrc` file in your project root or `~/.netwatchrc`:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `port` | `9090` | WebSocket server port |
-| `mode` | `"reactotron"` | Connection mode (`reactotron` or `standalone`) |
-| `ignoredUrls` | `[]` | URL patterns to ignore |
+| `ignoredUrls` | `[]` | URL patterns to ignore (substring, glob, or regex) |
 | `maxRequests` | `500` | Max stored requests |
 
 The `NETWATCH_PORT` environment variable overrides the config file port.
@@ -94,28 +145,3 @@ npm run dev        # Watch mode
 npm test           # Run tests
 npm run test:watch # Watch tests
 ```
-
-## Reactotron Setup
-
-In your React Native app:
-
-```typescript
-import Reactotron from "reactotron-react-native";
-
-Reactotron.configure({
-  host: "localhost",
-  port: 9090,
-})
-  .useReactNative({ networking: true })
-  .connect();
-```
-
-> **Tip:** Reactotron doesn't auto-reconnect. Add `onDisconnect` to retry:
->
-> ```typescript
-> Reactotron.configure({
->   host: "localhost",
->   port: 9090,
->   onDisconnect: () => setTimeout(() => Reactotron.connect(), 3000),
-> })
-> ```

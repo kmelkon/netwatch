@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { loadConfig } from "./config.js";
 import * as fs from "node:fs";
 
@@ -17,7 +17,6 @@ describe("loadConfig", () => {
     const config = loadConfig();
     expect(config).toEqual({
       port: 9090,
-      mode: "reactotron",
       ignoredUrls: [],
       maxRequests: 500,
     });
@@ -30,17 +29,7 @@ describe("loadConfig", () => {
 
     const config = loadConfig();
     expect(config.port).toBe(3000);
-    expect(config.mode).toBe("reactotron");
     expect(config.maxRequests).toBe(500);
-  });
-
-  it("reads standalone mode", () => {
-    vi.mocked(fs.readFileSync).mockReturnValueOnce(
-      JSON.stringify({ mode: "standalone" })
-    );
-
-    const config = loadConfig();
-    expect(config.mode).toBe("standalone");
   });
 
   it("reads ignoredUrls", () => {
@@ -68,9 +57,18 @@ describe("loadConfig", () => {
     const config = loadConfig();
     expect(config).toEqual({
       port: 9090,
-      mode: "reactotron",
       ignoredUrls: [],
       maxRequests: 500,
     });
+  });
+
+  it("silently ignores legacy mode field", () => {
+    vi.mocked(fs.readFileSync).mockReturnValueOnce(
+      JSON.stringify({ mode: "standalone", port: 8080 })
+    );
+
+    const config = loadConfig();
+    expect(config.port).toBe(8080);
+    expect(config).not.toHaveProperty("mode");
   });
 });

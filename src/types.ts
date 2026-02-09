@@ -31,6 +31,33 @@ export interface ApiResponsePayload {
   };
 }
 
+// Netwatch native protocol messages
+export interface NetwatchHelloMessage {
+  type: "netwatch.hello";
+  name: string;
+  platform?: string;
+}
+
+export interface NetwatchRequestMessage {
+  type: "netwatch.request";
+  id: number;
+  timestamp: string;
+  duration: number;
+  request: {
+    method: string;
+    url: string;
+    headers: Record<string, string>;
+    body: string | null;
+    size: number;
+  };
+  response: {
+    status: number;
+    headers: Record<string, string>;
+    body: string;
+    size: number;
+  };
+}
+
 export interface StoredRequest {
   id: number;
   timestamp: Date;
