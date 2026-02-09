@@ -1,6 +1,6 @@
 # netwatch
 
-Terminal-based network inspector for React Native apps. Captures HTTP requests via Reactotron and displays them in a flicker-free split-pane TUI.
+Terminal-based network inspector for React Native apps. Captures HTTP requests and displays them in a flicker-free split-pane TUI.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 ![Ink](https://img.shields.io/badge/Ink-6.6-green)
@@ -19,7 +19,9 @@ Terminal-based network inspector for React Native apps. Captures HTTP requests v
 - **Request/response toggle** — press `r` to switch between request and response body
 - **Pause capture** — press `p` to pause incoming requests
 - **Terminal resize** — layout adjusts dynamically on window resize
-- **Config file** — `.netwatchrc` for port, mode, ignored URLs, max requests
+- **Config file** — `.netwatchrc` for port, ignored URLs, max requests
+- **Dual protocol** — supports both `netwatch-client` and Reactotron simultaneously
+- **Auto-reconnect** — `netwatch-client` reconnects automatically, start server anytime
 
 ## Quick Start
 
@@ -33,71 +35,47 @@ npm install --registry https://registry.npmjs.org/
 npm start
 ```
 
-Then configure your React Native app to connect Reactotron to port 9090.
+## Client Setup (Recommended)
 
-## Keyboard Shortcuts
+Install `netwatch-client` in your React Native app — zero dependencies, patches `fetch` directly:
 
-| Key | Action |
-|-----|--------|
-| `↑↓` / `j/k` | Navigate request list |
-| `u` / `d` | Scroll detail pane |
-| `r` | Toggle request/response body |
-| `h` | Toggle headers display |
-| `/` | Focus filter input |
-| `Esc` | Exit filter |
-| `c` | Clear all requests |
-| `p` | Pause/resume capture |
-| `q` | Quit |
+```bash
+npm install netwatch-client
+```
 
-## Mouse Support
-
-- **Click** a pane to focus it (cyan border)
-- **Scroll wheel** on the focused pane to scroll content
-- **Hover** highlights pane border (yellow)
-
-Requires a terminal with mouse support (iTerm2, kitty, WezTerm, Windows Terminal).
-
-## Configuration
-
-Create a `.netwatchrc` file in your project root or `~/.netwatchrc`:
-
-```json
-{
-  "port": 9090,
-  "mode": "reactotron",
-  "ignoredUrls": ["/symbolicate", "/logs"],
-  "maxRequests": 500
+```typescript
+// App.tsx or index.js
+if (__DEV__) {
+  require("netwatch-client").connect({ name: "MyApp" });
 }
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `port` | `9090` | WebSocket server port |
-| `mode` | `"reactotron"` | Connection mode (`reactotron` or `standalone`) |
-| `ignoredUrls` | `[]` | URL patterns to ignore |
-| `maxRequests` | `500` | Max stored requests |
+That's it. The client auto-connects to netwatch on `localhost:9090` with exponential backoff — start the server anytime, no app restart needed.
 
-The `NETWATCH_PORT` environment variable overrides the config file port.
+### Client Options
 
-## Tech Stack
-
-- [Ink](https://github.com/vadimdemedes/ink) — React for terminal UIs
-- [Zustand](https://github.com/pmndrs/zustand) — state management
-- [Fuse.js](https://fusejs.io/) — fuzzy search
-- [ws](https://github.com/websockets/ws) — WebSocket server
-- [chalk](https://github.com/chalk/chalk) — terminal styling
-
-## Development
-
-```bash
-npm run dev        # Watch mode
-npm test           # Run tests
-npm run test:watch # Watch tests
+```typescript
+connect({
+  host: "localhost",     // server host
+  port: 9090,            // server port
+  name: "MyApp",         // display name in netwatch
+  platform: "ios",       // optional platform tag
+  ignoredUrls: [         // substring match, skip noisy URLs
+    "/symbolicate",
+    "/logs",
+  ],
+});
 ```
+
+### What gets captured
+
+`netwatch-client` only patches `fetch()` — it does **not** intercept `XMLHttpRequest`. This means your app's HTTP calls are captured, but background traffic from third-party SDKs (e.g. Optimizely, analytics) that use XHR or native HTTP modules won't appear. This is usually desirable since it keeps the request list focused on your app's traffic.
+
+Reactotron's `networking()` plugin patches XHR, so it captures both your app traffic and SDK traffic.
 
 ## Reactotron Setup
 
-In your React Native app:
+Both protocols work on the same port simultaneously — use whichever fits your project.
 
 ```typescript
 import Reactotron from "reactotron-react-native";
@@ -119,3 +97,65 @@ Reactotron.configure({
 >   onDisconnect: () => setTimeout(() => Reactotron.connect(), 3000),
 > })
 > ```
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `↑↓` / `j/k` | Navigate request list |
+| `u` / `d` | Scroll detail pane |
+| `r` | Toggle request/response body |
+| `h` | Toggle headers display |
+| `/` | Focus filter input |
+| `Esc` | Exit filter |
+| `b` | Bookmark selected request |
+| `B` | Toggle bookmarks-only filter |
+| `x` | Copy as cURL |
+| `e` | Export (HAR/JSON) |
+| `c` | Clear all requests (double-tap) |
+| `p` | Pause/resume capture |
+| `q` | Quit |
+
+## Mouse Support
+
+- **Click** a pane to focus it (cyan border)
+- **Scroll wheel** on the focused pane to scroll content
+- **Hover** highlights pane border (yellow)
+
+Requires a terminal with mouse support (iTerm2, kitty, WezTerm, Windows Terminal).
+
+## Configuration
+
+Create a `.netwatchrc` file in your project root or `~/.netwatchrc`:
+
+```json
+{
+  "port": 9090,
+  "ignoredUrls": ["/symbolicate", "/logs"],
+  "maxRequests": 500
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `port` | `9090` | WebSocket server port |
+| `ignoredUrls` | `[]` | URL patterns to ignore (substring, glob, or regex) |
+| `maxRequests` | `500` | Max stored requests |
+
+The `NETWATCH_PORT` environment variable overrides the config file port.
+
+## Tech Stack
+
+- [Ink](https://github.com/vadimdemedes/ink) — React for terminal UIs
+- [Zustand](https://github.com/pmndrs/zustand) — state management
+- [Fuse.js](https://fusejs.io/) — fuzzy search
+- [ws](https://github.com/websockets/ws) — WebSocket server
+- [chalk](https://github.com/chalk/chalk) — terminal styling
+
+## Development
+
+```bash
+npm run dev        # Watch mode
+npm test           # Run tests
+npm run test:watch # Watch tests
+```

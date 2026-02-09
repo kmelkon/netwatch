@@ -3,6 +3,8 @@ import type {
   ReactotronCommand,
   ClientIntroPayload,
   ApiResponsePayload,
+  NetwatchHelloMessage,
+  NetwatchRequestMessage,
   StoredRequest,
 } from "./types.js";
 import { useStore } from "./store.js";
@@ -31,7 +33,7 @@ export function startServer(port = 9090, ignoredUrls: string[] = []): WebSocketS
   wss.on("connection", (ws: WebSocket) => {
     ws.on("message", (data: Buffer) => {
       try {
-        const message = JSON.parse(data.toString()) as ReactotronCommand;
+        const message = JSON.parse(data.toString());
         handleMessage(ws, message, ignoredUrls);
       } catch {
         // Ignore malformed messages
@@ -46,7 +48,56 @@ export function startServer(port = 9090, ignoredUrls: string[] = []): WebSocketS
   return wss;
 }
 
-function handleMessage(ws: WebSocket, message: ReactotronCommand, ignoredUrls: string[]) {
+function handleMessage(ws: WebSocket, message: { type?: string; [key: string]: unknown }, ignoredUrls: string[]) {
+  const type = message.type;
+  if (typeof type === "string" && type.startsWith("netwatch.")) {
+    handleNetwatchMessage(ws, message, ignoredUrls);
+  } else {
+    handleReactotronMessage(ws, message as unknown as ReactotronCommand, ignoredUrls);
+  }
+}
+
+export function handleNetwatchMessage(ws: WebSocket, message: { type?: string; [key: string]: unknown }, ignoredUrls: string[]) {
+  const store = useStore.getState();
+
+  switch (message.type) {
+    case "netwatch.hello": {
+      const msg = message as unknown as NetwatchHelloMessage;
+      store.setConnected(true, msg.name);
+      ws.send(JSON.stringify({ type: "netwatch.welcome" }));
+      break;
+    }
+
+    case "netwatch.request": {
+      const msg = message as unknown as NetwatchRequestMessage;
+      if (matchesIgnoredUrl(msg.request.url, ignoredUrls)) break;
+
+      const request: StoredRequest = {
+        id: messageCounter++,
+        timestamp: new Date(msg.timestamp),
+        method: msg.request.method,
+        url: msg.request.url,
+        status: msg.response.status,
+        duration: msg.duration,
+        requestSize: msg.request.size,
+        responseSize: msg.response.size,
+        bookmarked: false,
+        request: {
+          headers: msg.request.headers,
+          body: msg.request.body,
+        },
+        response: {
+          headers: msg.response.headers,
+          body: msg.response.body,
+        },
+      };
+      store.addRequest(request);
+      break;
+    }
+  }
+}
+
+function handleReactotronMessage(ws: WebSocket, message: ReactotronCommand, ignoredUrls: string[]) {
   const store = useStore.getState();
 
   switch (message.type) {
@@ -54,7 +105,6 @@ function handleMessage(ws: WebSocket, message: ReactotronCommand, ignoredUrls: s
       const payload = message.payload as ClientIntroPayload;
       store.setConnected(true, payload.name);
 
-      // Respond with server intro
       const response = {
         type: "server.intro",
         messageId: messageCounter++,
