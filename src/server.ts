@@ -11,11 +11,31 @@ import { useStore } from "./store.js";
 import { matchesIgnoredUrl } from "./utils.js";
 
 let messageCounter = 0;
+const identifiedClients = new Set<WebSocket>();
+
+export function getIdentifiedClientCount(): number {
+  return identifiedClients.size;
+}
+
+export function clearIdentifiedClients(): void {
+  identifiedClients.clear();
+}
+
+export function removeIdentifiedClient(ws: WebSocket): void {
+  identifiedClients.delete(ws);
+  if (identifiedClients.size === 0) {
+    useStore.getState().setConnected(false);
+  }
+}
 
 export function computeBodySize(body: unknown): number {
   if (body === null || body === undefined) return 0;
   if (typeof body === "string") return Buffer.byteLength(body, "utf-8");
-  return Buffer.byteLength(JSON.stringify(body), "utf-8");
+  try {
+    return Buffer.byteLength(JSON.stringify(body), "utf-8");
+  } catch {
+    return 0;
+  }
 }
 
 export function startServer(port = 9090, ignoredUrls: string[] = []): WebSocketServer {
@@ -41,7 +61,7 @@ export function startServer(port = 9090, ignoredUrls: string[] = []): WebSocketS
     });
 
     ws.on("close", () => {
-      useStore.getState().setConnected(false);
+      removeIdentifiedClient(ws);
     });
   });
 
@@ -63,6 +83,7 @@ export function handleNetwatchMessage(ws: WebSocket, message: { type?: string; [
   switch (message.type) {
     case "netwatch.hello": {
       const msg = message as unknown as NetwatchHelloMessage;
+      identifiedClients.add(ws);
       store.setConnected(true, msg.name);
       ws.send(JSON.stringify({ type: "netwatch.welcome" }));
       break;
@@ -103,6 +124,7 @@ function handleReactotronMessage(ws: WebSocket, message: ReactotronCommand, igno
   switch (message.type) {
     case "client.intro": {
       const payload = message.payload as ClientIntroPayload;
+      identifiedClients.add(ws);
       store.setConnected(true, payload.name);
 
       const response = {

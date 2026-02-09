@@ -52,8 +52,9 @@ export function patchFetch(
       }
     }
 
-    const method = (init?.method ?? "GET").toUpperCase();
-    const reqHeaders = new Headers(init?.headers);
+    const isRequest = input instanceof Request;
+    const method = (init?.method ?? (isRequest ? input.method : "GET")).toUpperCase();
+    const reqHeaders = new Headers(init?.headers ?? (isRequest ? input.headers : undefined));
     const reqBody =
       init?.body != null ? String(init.body) : null;
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { computeBodySize, handleNetwatchMessage } from "./server.js";
+import { computeBodySize, handleNetwatchMessage, clearIdentifiedClients, getIdentifiedClientCount, removeIdentifiedClient } from "./server.js";
 import { useStore } from "./store.js";
 
 describe("computeBodySize", () => {
@@ -33,6 +33,16 @@ describe("computeBodySize", () => {
     const body = [1, 2, 3];
     expect(computeBodySize(body)).toBe(Buffer.byteLength("[1,2,3]", "utf-8"));
   });
+
+  it("returns 0 for circular reference", () => {
+    const obj: Record<string, unknown> = { a: 1 };
+    obj.self = obj;
+    expect(computeBodySize(obj)).toBe(0);
+  });
+
+  it("returns 0 for BigInt value", () => {
+    expect(computeBodySize({ n: BigInt(123) })).toBe(0);
+  });
 });
 
 describe("handleNetwatchMessage", () => {
@@ -43,6 +53,7 @@ describe("handleNetwatchMessage", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    clearIdentifiedClients();
     const store = useStore.getState();
     store.setConnected(false);
     store.clearRequests();
@@ -127,5 +138,26 @@ describe("handleNetwatchMessage", () => {
 
     const store = useStore.getState();
     expect(store.requests).toHaveLength(0);
+  });
+
+  it("tracks identified clients — stays connected until all disconnect", () => {
+    const ws1 = { send: vi.fn() } as unknown as import("ws").WebSocket;
+    const ws2 = { send: vi.fn() } as unknown as import("ws").WebSocket;
+
+    // Two clients connect
+    handleNetwatchMessage(ws1, { type: "netwatch.hello", name: "App1", platform: "ios" }, []);
+    handleNetwatchMessage(ws2, { type: "netwatch.hello", name: "App2", platform: "android" }, []);
+    expect(getIdentifiedClientCount()).toBe(2);
+    expect(useStore.getState().connected).toBe(true);
+
+    // First client disconnects — simulate close handler via exported helpers
+    removeIdentifiedClient(ws1);
+    expect(useStore.getState().connected).toBe(true);
+    expect(getIdentifiedClientCount()).toBe(1);
+
+    // Second client disconnects — now disconnected
+    removeIdentifiedClient(ws2);
+    expect(useStore.getState().connected).toBe(false);
+    expect(getIdentifiedClientCount()).toBe(0);
   });
 });

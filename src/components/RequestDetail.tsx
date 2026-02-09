@@ -56,6 +56,7 @@ function formatHeaders(headers: Record<string, string>): string[] {
 // Stable selectors
 const selectFilteredRequests = (s: ReturnType<typeof useStore.getState>) => s.filteredRequests;
 const selectSelectedIndex = (s: ReturnType<typeof useStore.getState>) => s.selectedIndex;
+const selectFilterFocused = (s: ReturnType<typeof useStore.getState>) => s.filterFocused;
 
 export interface DetailScrollHandle {
   scroll(delta: number): void;
@@ -72,6 +73,7 @@ export const RequestDetail = React.memo(
   ) {
     const filteredRequests = useStore(useShallow(selectFilteredRequests));
     const selectedIndex = useStore(selectSelectedIndex);
+    const filterFocused = useStore(selectFilterFocused);
     const [showResponse, setShowResponse] = React.useState(true);
     const [showHeaders, setShowHeaders] = React.useState(false);
     const [scrollOffset, setScrollOffset] = React.useState(0);
@@ -128,7 +130,7 @@ export const RequestDetail = React.memo(
       } else if (input === "u") {
         setScrollOffset((s) => Math.max(0, s - 3));
       }
-    });
+    }, { isActive: !filterFocused });
 
     if (!request) {
       return (

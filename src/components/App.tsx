@@ -2,7 +2,7 @@ import React from "react";
 import { execSync } from "node:child_process";
 import { Box, Text, useInput, useApp } from "ink";
 import TextInput from "ink-text-input";
-import { useStore } from "../store.js";
+import { useStore, getPort } from "../store.js";
 import { RequestList } from "./RequestList.js";
 import { RequestDetail, type DetailScrollHandle } from "./RequestDetail.js";
 import { useMouse } from "../hooks/useMouse.js";
@@ -50,7 +50,7 @@ const Header = React.memo(function Header() {
       {connected ? (
         <Text color="green">● {clientName || "Connected"}</Text>
       ) : (
-        <Text color="yellow">○ Waiting on :9090</Text>
+        <Text color="yellow">○ Waiting on :{getPort()}</Text>
       )}
       <Text> │ </Text>
       <Text dimColor>

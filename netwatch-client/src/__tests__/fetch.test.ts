@@ -125,4 +125,42 @@ describe("patchFetch", () => {
 
     unpatch();
   });
+
+  it("extracts method and headers from Request input", async () => {
+    const captured: RequestMessage[] = [];
+    vi.mocked(originalFetch).mockResolvedValue(mockResponse("ok"));
+
+    const unpatch = patchFetch((msg) => captured.push(msg), []);
+    const req = new Request("https://api.example.com/data", {
+      method: "DELETE",
+      headers: { "X-Custom": "value" },
+    });
+    await globalThis.fetch(req);
+
+    expect(captured[0].request.method).toBe("DELETE");
+    expect(captured[0].request.headers["x-custom"]).toBe("value");
+
+    unpatch();
+  });
+
+  it("init overrides Request properties when both present", async () => {
+    const captured: RequestMessage[] = [];
+    vi.mocked(originalFetch).mockResolvedValue(mockResponse("ok"));
+
+    const unpatch = patchFetch((msg) => captured.push(msg), []);
+    const req = new Request("https://api.example.com/data", {
+      method: "DELETE",
+      headers: { "X-From-Request": "req" },
+    });
+    await globalThis.fetch(req, {
+      method: "PATCH",
+      headers: { "X-From-Init": "init" },
+    });
+
+    expect(captured[0].request.method).toBe("PATCH");
+    expect(captured[0].request.headers["x-from-init"]).toBe("init");
+    expect(captured[0].request.headers["x-from-request"]).toBeUndefined();
+
+    unpatch();
+  });
 });
