@@ -9,6 +9,7 @@ import { useMouse } from "../hooks/useMouse.js";
 import { formatBytes } from "../utils.js";
 import { toCurl } from "../utils/curl.js";
 import { exportToFile } from "../utils/export.js";
+import { SHORTCUTS, SECTIONS } from "../shortcuts.js";
 
 // Stable selectors for Header
 const selectConnected = (s: ReturnType<typeof useStore.getState>) => s.connected;
@@ -104,23 +105,56 @@ function KeyBadge({ keys, label }: { keys: string; label: string }) {
   );
 }
 
+/** Compact labels for the footer bar. Shortcuts not listed here are still in the help overlay. */
+const FOOTER_LABELS: Record<string, string> = {
+  "↑/k": "nav", "u": "scroll", "r": "req/res", "h": "headers",
+  "/": "filter", "b": "bookmark", "x": "curl", "e": "export",
+  "c": "clear", "p": "pause", "?": "help", "q": "quit",
+};
+
 const Footer = React.memo(function Footer() {
   return (
     <Box paddingX={1} gap={0}>
-      <KeyBadge keys="↑↓" label="nav" />
-      <KeyBadge keys="u/d" label="scroll" />
-      <KeyBadge keys="r" label="req/res" />
-      <KeyBadge keys="h" label="headers" />
-      <KeyBadge keys="/" label="filter" />
-      <KeyBadge keys="b" label="bookmark" />
-      <KeyBadge keys="x" label="curl" />
-      <KeyBadge keys="e" label="export" />
-      <KeyBadge keys="c" label="clear" />
-      <KeyBadge keys="p" label="pause" />
-      <KeyBadge keys="q" label="quit" />
+      {SHORTCUTS.filter((s) => s.keys in FOOTER_LABELS).map((s) => (
+        <KeyBadge key={s.keys} keys={s.keys} label={FOOTER_LABELS[s.keys]!} />
+      ))}
     </Box>
   );
 });
+
+function HelpOverlay({ height }: { height: number }) {
+  const grouped = SECTIONS.map((section) => ({
+    section,
+    items: SHORTCUTS.filter((s) => s.section === section),
+  }));
+
+  return (
+    <Box
+      height={height}
+      flexDirection="column"
+      borderStyle="single"
+      borderColor="cyan"
+      paddingX={2}
+      paddingY={1}
+    >
+      <Text bold>Keyboard Shortcuts</Text>
+      <Text> </Text>
+      {grouped.map(({ section, items }) => (
+        <Box key={section} flexDirection="column">
+          <Text bold dimColor>{section}</Text>
+          {items.map((s) => (
+            <Text key={s.keys}>
+              <Text bold color="cyan">{s.keys.padEnd(5)}</Text>
+              <Text> {s.label}</Text>
+            </Text>
+          ))}
+          <Text> </Text>
+        </Box>
+      ))}
+      <Text dimColor>Press <Text bold color="cyan">?</Text> or <Text bold color="cyan">Esc</Text> to close</Text>
+    </Box>
+  );
+}
 
 function copyToClipboard(text: string): boolean {
   const escaped = text.replace(/'/g, "'\\''");
@@ -149,6 +183,7 @@ export function App() {
   const [hoveredPane, setHoveredPane] = React.useState<"list" | "detail" | null>(null);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const [exportPrompt, setExportPrompt] = React.useState(false);
+  const [showHelp, setShowHelp] = React.useState(false);
   const clearPendingRef = React.useRef(false);
   const clearTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -194,6 +229,12 @@ export function App() {
       return;
     }
 
+    // Help overlay swallows all keys except ? and Esc (to close)
+    if (showHelp) {
+      if (key.escape || input === "?") setShowHelp(false);
+      return;
+    }
+
     if (key.escape && filterFocused) {
       setFilterFocused(false);
     } else if (input === "/" && !filterFocused) {
@@ -230,6 +271,8 @@ export function App() {
       }
     } else if (input === "e" && !filterFocused) {
       setExportPrompt(true);
+    } else if (input === "?" && !filterFocused) {
+      setShowHelp(true);
     }
   });
 
@@ -254,24 +297,28 @@ export function App() {
     <Box flexDirection="column">
       <Header />
       <FilterBar />
-      <Box height={mainHeight}>
-        <Box
-          width="50%"
-          flexDirection="column"
-          borderStyle="single"
-          borderColor={focusedPane === "list" ? "cyan" : hoveredPane === "list" ? "yellow" : "gray"}
-        >
-          <RequestList maxItems={innerHeight} />
+      {showHelp ? (
+        <HelpOverlay height={mainHeight} />
+      ) : (
+        <Box height={mainHeight}>
+          <Box
+            width="50%"
+            flexDirection="column"
+            borderStyle="single"
+            borderColor={focusedPane === "list" ? "cyan" : hoveredPane === "list" ? "yellow" : "gray"}
+          >
+            <RequestList maxItems={innerHeight} />
+          </Box>
+          <Box
+            width="50%"
+            flexDirection="column"
+            borderStyle="single"
+            borderColor={focusedPane === "detail" ? "cyan" : hoveredPane === "detail" ? "yellow" : "gray"}
+          >
+            <RequestDetail ref={detailRef} visibleLines={innerHeight - 4} />
+          </Box>
         </Box>
-        <Box
-          width="50%"
-          flexDirection="column"
-          borderStyle="single"
-          borderColor={focusedPane === "detail" ? "cyan" : hoveredPane === "detail" ? "yellow" : "gray"}
-        >
-          <RequestDetail ref={detailRef} visibleLines={innerHeight - 4} />
-        </Box>
-      </Box>
+      )}
       {exportPrompt && (
         <Box paddingX={1}>
           <Text color="yellow">Export: </Text>
