@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { useStore } from "./store.js";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { useStore, setMaxRequests } from "./store.js";
 import type { StoredRequest } from "./types.js";
 
 function makeRequest(overrides: Partial<StoredRequest> = {}): StoredRequest {
@@ -115,6 +115,62 @@ describe("store", () => {
       const state = useStore.getState();
       expect(state.showBookmarksOnly).toBe(false);
       expect(state.filteredRequests).toHaveLength(2);
+    });
+  });
+
+  describe("maxRequests", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      setMaxRequests(500);
+    });
+
+    it("trims oldest requests when limit exceeded", () => {
+      setMaxRequests(5);
+
+      for (let i = 1; i <= 8; i++) {
+        useStore.getState().addRequest(makeRequest({ id: i }));
+      }
+      vi.advanceTimersByTime(100);
+
+      const state = useStore.getState();
+      expect(state.requests).toHaveLength(5);
+      // newest (highest id) should be kept — addRequest unshifts so newest are first
+      expect(state.requests.map((r) => r.id)).toEqual([8, 7, 6, 5, 4]);
+    });
+
+    it("keeps all requests when under limit", () => {
+      setMaxRequests(10);
+
+      for (let i = 1; i <= 3; i++) {
+        useStore.getState().addRequest(makeRequest({ id: i }));
+      }
+      vi.advanceTimersByTime(100);
+
+      expect(useStore.getState().requests).toHaveLength(3);
+    });
+
+    it("applies new limit after setMaxRequests changes the cap", () => {
+      setMaxRequests(10);
+
+      for (let i = 1; i <= 6; i++) {
+        useStore.getState().addRequest(makeRequest({ id: i }));
+      }
+      vi.advanceTimersByTime(100);
+      expect(useStore.getState().requests).toHaveLength(6);
+
+      setMaxRequests(3);
+
+      // Add one more to trigger a new flush
+      useStore.getState().addRequest(makeRequest({ id: 7 }));
+      vi.advanceTimersByTime(100);
+
+      const state = useStore.getState();
+      expect(state.requests).toHaveLength(3);
+      expect(state.requests.map((r) => r.id)).toEqual([7, 6, 5]);
     });
   });
 
