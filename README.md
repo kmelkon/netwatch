@@ -1,9 +1,11 @@
 # netwatch
 
+No Reactotron, no browser tab — just your terminal.
+
 Terminal-based network inspector for React Native apps. Captures HTTP requests and displays them in a flicker-free split-pane TUI.
 
+[![npm version](https://img.shields.io/npm/v/netwatch)](https://www.npmjs.com/package/netwatch)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
-![Ink](https://img.shields.io/badge/Ink-6.6-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ![netwatch demo](.github/demo.gif)
@@ -28,13 +30,14 @@ Terminal-based network inspector for React Native apps. Captures HTTP requests a
 ## Quick Start
 
 ```bash
-# Clone and install
-git clone https://github.com/kmelkon/netwatch.git
-cd netwatch
-npm install --registry https://registry.npmjs.org/
+npx netwatch
+```
 
-# Run
-npm start
+Or install globally:
+
+```bash
+npm install -g netwatch
+netwatch
 ```
 
 ## Client Setup (Recommended)
@@ -154,9 +157,17 @@ The `NETWATCH_PORT` environment variable overrides the config file port.
 - [ws](https://github.com/websockets/ws) — WebSocket server
 - [chalk](https://github.com/chalk/chalk) — terminal styling
 
+## Supported Platforms
+
+Runs anywhere Node.js 18+ runs: **macOS**, **Linux**, **Windows**. Mouse support requires a compatible terminal (iTerm2, kitty, WezTerm, Windows Terminal).
+
 ## Development
 
 ```bash
+git clone https://github.com/kmelkon/netwatch.git
+cd netwatch
+npm install --registry https://registry.npmjs.org/
+
 npm run dev        # Watch mode
 npm test           # Run tests
 npm run test:watch # Watch tests
